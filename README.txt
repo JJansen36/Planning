@@ -1,0 +1,1 @@
+Zie README in vorige versies. SQL: projecten.section, assignments.start_date/end_date/start_time/end_time/type.

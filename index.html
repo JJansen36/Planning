@@ -193,58 +193,5 @@
       .card--wide { grid-column: auto; }
     }
   </style>
-
-<div id="taskModal" class="modal" hidden>
-  <div class="modal-backdrop"></div>
-  <div class="modal-dialog">
-    <header class="modal-head">
-      <h3 id="taskTitle">Taak</h3>
-      <button id="modalClose" class="icon-btn" title="Sluiten">×</button>
-    </header>
-    <div class="modal-body">
-      <input type="hidden" id="mId" />
-      <div class="grid2">
-        <label>Medewerker
-          <select id="mEmp"></select>
-        </label>
-        <label>Project
-          <select id="mProj"></select>
-        </label>
-      </div>
-      <div class="grid2">
-        <label>Start datum
-          <input type="date" id="mStartDate" />
-        </label>
-        <label>Eind datum
-          <input type="date" id="mEndDate" />
-        </label>
-      </div>
-      <div class="grid2">
-        <label>Start tijd
-          <input type="time" id="mStartTime" value="08:00" />
-        </label>
-        <label>Eind tijd
-          <input type="time" id="mEndTime" value="16:00" />
-        </label>
-      </div>
-      <label>Type (kleur)
-        <select id="mType">
-          <option value="productie">Groen — productie</option>
-          <option value="montage">Geel — montage</option>
-          <option value="vrij">Rood — vrij</option>
-        </select>
-      </label>
-      <label>Notitie
-        <input id="mNotes" placeholder="Optioneel" />
-      </label>
-    </div>
-    <footer class="modal-foot">
-      <button id="mDelete" class="icon-btn danger" title="Verwijderen" disabled>×</button>
-      <div class="spacer"></div>
-      <button id="mSave" class="btn">Opslaan</button>
-    </footer>
-  </div>
-</div>
-
 </body>
 </html>

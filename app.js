@@ -4,41 +4,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ADMIN_PASSWORD = 'lovd-admin';
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// --- Simple CRUD helpers for employees/projects (prompt + cross delete) ---
-async function renameEmployee(id){
-  if(!isAdmin()) return alert('Wachtwoord vereist');
-  const current = (cache.employees.find(e=>e.id===id)||{}).name || '';
-  const name = prompt('Nieuwe naam voor medewerker:', current);
-  if(name===null) return;
-  const { error } = await sb.from('employees').update({ name }).eq('id', id);
-  if(error) return alert('Opslaan mislukt: '+error.message);
-  await reload();
-}
-async function removeEmployee(id){
-  if(!isAdmin()) return alert('Wachtwoord vereist');
-  if(!confirm('Medewerker verwijderen? Alle taken van deze medewerker verdwijnen ook.')) return;
-  const { error } = await sb.from('employees').delete().eq('id', id);
-  if(error) return alert('Verwijderen mislukt: '+error.message);
-  await reload();
-}
-async function renameProject(id){
-  if(!isAdmin()) return alert('Wachtwoord vereist');
-  const p = cache.projects.find(p=>p.id===id)||{};
-  const number = prompt('Projectnummer:', p.number||''); if(number===null) return;
-  const name   = prompt('Projectnaam:',   p.name||'');   if(name===null) return;
-  const section= prompt('Sectie (optioneel):', p.section||''); if(section===null) return;
-  const { error } = await sb.from('projects').update({ number, name, section: section||null }).eq('id', id);
-  if(error) return alert('Opslaan mislukt: '+error.message);
-  await reload();
-}
-async function removeProject(id){
-  if(!isAdmin()) return alert('Wachtwoord vereist');
-  if(!confirm('Project verwijderen? Taken die dit project gebruiken verdwijnen ook.')) return;
-  const { error } = await sb.from('projects').delete().eq('id', id);
-  if(error) return alert('Verwijderen mislukt: '+error.message);
-  await reload();
-}
-
 
 const $ = (s)=>document.querySelector(s);
 function el(t,c,txt){const n=document.createElement(t); if(c) n.className=c; if(txt) n.textContent=txt; return n;}
@@ -117,25 +82,11 @@ function renderWeek(gridEl, monday){
         item.classList.add(a.type||'productie');
         item.querySelector('.title').textContent = `${proj?proj.number:'?'} — ${proj?proj.name:''}`;
         item.querySelector('.meta').textContent = `${a.start_time}–${a.end_time}${proj&&proj.section?` • ${proj.section}`:''}${a.notes?` • ${a.notes}`:''}`;
-        item.addEventListener('click', ()=>{ openTaskModal(a); });
-});
+        item.addEventListener('click', ()=>{ if(!isAdmin()) return; openEditorWith(a); });
         item.querySelector('.x').addEventListener('click', async (e)=>{ e.stopPropagation(); await deleteAssignment(a.id); await reload(); });
         itemsBox.appendChild(item);
       }
-      cell.querySelector('.dropzone').addEventListener('click', ()=>{
-  if(!isAdmin()) return;
-  openTaskModal({
-    employee_id: emp.id,
-    project_id: cache.projects[0]?.id || null,
-    start_date: iso,
-    end_date: iso,
-    start_time: '08:00',
-    end_time: '16:00',
-    type: 'productie',
-    notes: null
-  });
-});
-const s=iso; $('#qStartDate').value=s; $('#qEndDate').value=s; $('#qId').value=''; $('#qDelete').disabled = true; window.scrollTo({top:0, behavior:'smooth'}); });
+      cell.querySelector('.dropzone').addEventListener('click', ()=>{ if(!editorOpen) return; $('#qEmp').value = String(emp.id); const s=iso; $('#qStartDate').value=s; $('#qEndDate').value=s; $('#qId').value=''; $('#qDelete').disabled = true; window.scrollTo({top:0, behavior:'smooth'}); });
       gridEl.appendChild(cell);
     }
   }
@@ -148,15 +99,23 @@ function render(){
   renderWeek($('#gridWeek1'), currentMonday);
   renderWeek($('#gridWeek2'), nextMonday);
 
-  $('#empList').innerHTML = cache.employees.map(e=>`<li>${e.name}
-  <button class="btn small" title="Bewerken" onclick="renameEmployee(${e.id})">✏️</button>
-  <button class="icon-btn danger del-emp" title="Verwijderen" onclick="removeEmployee(${e.id})">×</button>
-</li>`).join('');
-$('#projList').innerHTML = cache.projects.map(p=>`<li>${p.number} — ${p.name}${p.section?` • ${p.section}`:''}
-  <button class="btn small" title="Bewerken" onclick="renameProject(${p.id})">✏️</button>
-  <button class="icon-btn danger del-proj" title="Verwijderen" onclick="removeProject(${p.id})">×</button>
-</li>`).join('');
-$('#qEmp').innerHTML = cache.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  $('#empList').innerHTML = cache.employees.map(e=>`
+      <li data-id="${e.id}" class="row">
+        <input class="emp-name" value="${htmlesc(e.name)}" />
+        <button class="save-emp btn small">Opslaan</button>
+        <button class="icon-btn danger del-emp" title="Verwijder">🗑️</button>
+      </li>
+    `).join('');
+  $('#projList').innerHTML = cache.projects.map(p=>`
+      <li data-id="${p.id}" class="row">
+        <input class="proj-number" placeholder="Nr" value="${htmlesc(p.number)}" />
+        <input class="proj-name" placeholder="Naam" value="${htmlesc(p.name)}" />
+        <input class="proj-section" placeholder="Sectie" value="${htmlesc(p.section||'')}" />
+        <button class="save-proj btn small">Opslaan</button>
+        <button class="icon-btn danger del-proj" title="Verwijder">🗑️</button>
+      </li>
+    `).join('');
+  $('#qEmp').innerHTML = cache.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
   $('#qProj').innerHTML = cache.projects.map(p=>`<option value="${p.id}">${p.number} — ${p.name}</option>`).join('');
 }
 
@@ -237,78 +196,3 @@ function wire(){
 }
 
 document.addEventListener('DOMContentLoaded', async ()=>{ wire(); await reload(); });
-
-
-// ---- Modal for task add/edit ----
-function fillModalSelects(){
-  document.querySelector('#mEmp').innerHTML = cache.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-  document.querySelector('#mProj').innerHTML = cache.projects.map(p=>`<option value="${p.id}">${p.number} — ${p.name}</option>`).join('');
-}
-function openTaskModal(rec){
-  if(!isAdmin()) return alert('Wachtwoord vereist');
-  fillModalSelects();
-  const isEdit = !!(rec && rec.id);
-  document.querySelector('#taskTitle').textContent = isEdit ? 'Taak bewerken' : 'Taak toevoegen';
-  document.querySelector('#mId').value = rec?.id || '';
-  document.querySelector('#mEmp').value = String(rec?.employee_id || (cache.employees[0]?.id||''));
-  document.querySelector('#mProj').value = String(rec?.project_id || (cache.projects[0]?.id||''));
-  document.querySelector('#mStartDate').value = rec?.start_date || '';
-  document.querySelector('#mEndDate').value   = rec?.end_date || rec?.start_date || '';
-  document.querySelector('#mStartTime').value = rec?.start_time || '08:00';
-  document.querySelector('#mEndTime').value   = rec?.end_time || '16:00';
-  document.querySelector('#mType').value      = rec?.type || 'productie';
-  document.querySelector('#mNotes').value     = rec?.notes || '';
-  document.querySelector('#mDelete').disabled = !isEdit;
-  document.getElementById('taskModal').hidden = false;
-}
-function closeTaskModal(){ document.getElementById('taskModal').hidden = true; }
-
-document.addEventListener('click', (ev)=>{
-  if(ev.target.id==='modalClose' || ev.target.classList.contains('modal-backdrop')) closeTaskModal();
-});
-
-document.getElementById('mSave').addEventListener('click', async ()=>{
-  const rec = {
-    id: document.querySelector('#mId').value ? Number(document.querySelector('#mId').value): undefined,
-    employee_id: Number(document.querySelector('#mEmp').value),
-    project_id:  Number(document.querySelector('#mProj').value),
-    start_date:  document.querySelector('#mStartDate').value,
-    end_date:    document.querySelector('#mEndDate').value || document.querySelector('#mStartDate').value,
-    start_time:  document.querySelector('#mStartTime').value,
-    end_time:    document.querySelector('#mEndTime').value,
-    type:        document.querySelector('#mType').value,
-    notes:       document.querySelector('#mNotes').value || null,
-  };
-  if(!rec.employee_id||!rec.project_id||!rec.start_date||!rec.start_time||!rec.end_time) return alert('Vul alle velden in');
-  if(rec.end_date < rec.start_date) return alert('Einddatum ligt vóór startdatum');
-  if(rec.end_time <= rec.start_time) return alert('Eindtijd moet na starttijd liggen');
-  try{
-    if(rec.id){
-      const { error } = await sb.from('assignments').update(rec).eq('id', rec.id);
-      if(error) throw error;
-    } else {
-      const { error } = await sb.from('assignments').insert(rec);
-      if(error) throw error;
-    }
-    closeTaskModal();
-    await reload();
-  }catch(e){
-    alert('Opslaan mislukt: ' + (e?.message||e));
-    console.error(e);
-  }
-});
-
-document.getElementById('mDelete').addEventListener('click', async ()=>{
-  const id = document.querySelector('#mId').value;
-  if(!id) return;
-  if(!confirm('Deze taak verwijderen?')) return;
-  try{
-    const { error } = await sb.from('assignments').delete().eq('id', Number(id));
-    if(error) throw error;
-    closeTaskModal();
-    await reload();
-  }catch(e){
-    alert('Verwijderen mislukt: ' + (e?.message||e));
-    console.error(e);
-  }
-});
