@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>LOVD Weekplanner — gedeeld</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">LOVD</div>
+      <div class="title">Weekplanner</div>
+    </div>
+    <div class="week-nav">
+      <button id="prevWeek" class="btn">← Vorige</button>
+      <div id="weekLabel" class="week-label"></div>
+      <button id="nextWeek" class="btn">Volgende →</button>
+      <button id="todayBtn" class="btn ghost">Vandaag</button>
+    </div>
+    <div class="actions">
+      <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd"/>
+      <button id="toggleEdit" class="btn" disabled>Beheer</button>
+      <button id="exportBtn" class="btn ghost">⬇️ Export</button>
+      <label class="btn ghost file-label">
+        ⬆️ Import
+        <input type="file" id="importFile" accept=".json,application/json"/>
+      </label>
+    </div>
+  </header>
+
+  <!-- Kalender eerst -->
+  <main class="layout layout--calendar-first">
+    <section class="board board--full">
+      <div id="gridWrap">
+        <div id="gridWeek1" class="grid"></div>
+        <div id="gridWeek2" class="grid"></div>
+      </div>
+    </section>
+
+    <!-- Beheerpanelen compacter en in 2 kolommen -->
+    <aside class="panel panel--compact" id="editorPanel" hidden>
+      <h2>Beheer</h2>
+
+      <div class="admin-grid">
+        <section class="card card--narrow">
+          <h3>Medewerkers</h3>
+          <div class="row row--tight">
+            <input id="empName" placeholder="Naam medewerker"/>
+            <button id="addEmp" class="btn small">+ Voeg toe</button>
+          </div>
+          <ul id="empList" class="list list--editable"></ul>
+        </section>
+
+        <section class="card card--narrow">
+          <h3>Projecten</h3>
+          <div class="row row--tight">
+            <input id="projNumber" placeholder="Nr" class="input--xs"/>
+            <input id="projName" placeholder="Naam" class="input--sm"/>
+            <input id="projSect" placeholder="Sectie" class="input--xs"/>
+            <button id="addProj" class="btn small">+ Voeg toe</button>
+          </div>
+          <ul id="projList" class="list list--editable small"></ul>
+        </section>
+
+        <section class="card card--wide">
+          <h3>Taak toevoegen/bewerken</h3>
+          <div class="row">
+            <label>Medewerker
+              <select id="qEmp"></select>
+            </label>
+            <label>Project
+              <select id="qProj"></select>
+            </label>
+          </div>
+          <div class="row">
+            <label>Start datum
+              <input type="date" id="qStartDate"/>
+            </label>
+            <label>Eind datum
+              <input type="date" id="qEndDate"/>
+            </label>
+          </div>
+          <div class="row">
+            <label>Start tijd
+              <input type="time" id="qStartTime" value="08:00"/>
+            </label>
+            <label>Eind tijd
+              <input type="time" id="qEndTime" value="16:00"/>
+            </label>
+          </div>
+          <label>Type (kleur)
+            <select id="qType">
+              <option value="productie">Groen — productie</option>
+              <option value="montage">Geel — montage</option>
+              <option value="vrij">Rood — vrij</option>
+            </select>
+          </label>
+          <label>Notitie
+            <input id="qNotes" placeholder="Optioneel"/>
+          </label>
+          <div class="row row--tight">
+            <button id="qSave" class="btn">Opslaan</button>
+            <button id="qDelete" class="btn danger icon-btn" disabled title="Verwijderen"></button>
+          </div>
+          <input type="hidden" id="qId"/>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <template id="cellTpl">
+    <div class="cell">
+      <div class="dropzone"></div>
+      <div class="items"></div>
+    </div>
+  </template>
+
+  <template id="itemTpl">
+    <div class="item">
+      <div class="title"></div>
+      <div class="meta"></div>
+      <button class="x" title="Verwijder">✕</button>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+
+  <!-- UI overrides zonder styles.css te wijzigen -->
+  <style>
+    /* Kalender bovenaan en aside eronder */
+    .layout.layout--calendar-first {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      max-width: 1600px;
+      margin: 12px auto;
+      padding: 0 16px;
+    }
+    .board--full { order: 0; }
+    .panel--compact { order: 1; }
+
+    /* Kalender: kolommen laten schalen zodat geen horizontale scroll nodig is */
+    .grid {
+      grid-template-columns: 200px repeat(7, 1fr) !important;
+      width: 100%;
+    }
+
+    /* Beheer in 2 kolommen, compacte kaarten */
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .card--narrow { padding: 10px; }
+    .card--wide   { grid-column: 1 / -1; padding: 10px; }
+    .row--tight { grid-template-columns: 1fr auto; gap: 8px; }
+
+    /* Kleinere inputs voor projecten */
+    .input--xs { max-width: 120px; }
+    .input--sm { max-width: 220px; }
+    #projNumber, #projSect { padding: 8px 10px; font-size: .95rem; }
+    #projName { padding: 8px 10px; font-size: .95rem; }
+
+    /* Projectregels en medewerkers: naast elkaar in één rij */
+    #projList li.row, #empList li.row { display: grid; align-items: center; gap: 8px; }
+    /* Als je app.js rijen met class="row" rendert, valt dit er direct op.
+       Anders stylen we generiek de <li> items: */
+    #projList li { display: grid; grid-template-columns: 110px 1fr 150px auto auto; gap: 8px; align-items: center; }
+    #empList  li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
+
+    /* Maak alle inputjes in lijsten compacter */
+    #projList input, #empList input, #projList select, #empList select {
+      padding: 8px 10px; font-size: .95rem;
+    }
+
+    /* Icon-only knoppen voor verwijderen: kruisje i.p.v. tekst */
+    .btn.danger.icon-btn { width: 34px; height: 34px; padding: 0; border-radius: 10px; }
+    .btn.danger.icon-btn::before { content: "✕"; display: inline-block; font-size: 16px; line-height: 34px; }
+    /* Ook voor bestaande 'danger' knoppen in de lijsten die tekst 'Verwijder' tonen:
+       verberg tekst en toon een kruisje */
+    .list--editable .btn.danger { position: relative; width: 30px; height: 30px; padding: 0; overflow: hidden; }
+    .list--editable .btn.danger::before { content: "✕"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 14px; }
+    .list--editable .btn.danger { color: #ffb3b5; border-color: #ff5a5f55; }
+    .list--editable .btn.small { padding: 0 8px; height: 30px; }
+
+    /* Buttons en velden overall net iets compacter */
+    .btn.small { padding: 6px 8px; font-size: .9rem; }
+    label { font-size: .95rem; }
+    @media (max-width: 980px) {
+      .admin-grid { grid-template-columns: 1fr; }
+      .card--wide { grid-column: auto; }
+    }
+  </style>
+
+<div id="taskModal" class="modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <header class="modal-head">
+      <h3 id="taskTitle">Taak</h3>
+      <button id="modalClose" class="icon-btn" title="Sluiten">×</button>
+    </header>
+    <div class="modal-body">
+      <input type="hidden" id="mId" />
+      <div class="grid2">
+        <label>Medewerker
+          <select id="mEmp"></select>
+        </label>
+        <label>Project
+          <select id="mProj"></select>
+        </label>
+      </div>
+      <div class="grid2">
+        <label>Start datum
+          <input type="date" id="mStartDate" />
+        </label>
+        <label>Eind datum
+          <input type="date" id="mEndDate" />
+        </label>
+      </div>
+      <div class="grid2">
+        <label>Start tijd
+          <input type="time" id="mStartTime" value="08:00" />
+        </label>
+        <label>Eind tijd
+          <input type="time" id="mEndTime" value="16:00" />
+        </label>
+      </div>
+      <label>Type (kleur)
+        <select id="mType">
+          <option value="productie">Groen — productie</option>
+          <option value="montage">Geel — montage</option>
+          <option value="vrij">Rood — vrij</option>
+        </select>
+      </label>
+      <label>Notitie
+        <input id="mNotes" placeholder="Optioneel" />
+      </label>
+    </div>
+    <footer class="modal-foot">
+      <button id="mDelete" class="icon-btn danger" title="Verwijderen" disabled>×</button>
+      <div class="spacer"></div>
+      <button id="mSave" class="btn">Opslaan</button>
+    </footer>
+  </div>
+</div>
+
+</body>
+</html>
