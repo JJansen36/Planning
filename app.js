@@ -195,4 +195,105 @@ function wire(){
   $('#exportBtn').addEventListener('click', ()=>{ const blob = new Blob([JSON.stringify(cache,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lovd-weekplanner-backup.json'; a.click(); URL.revokeObjectURL(a.href); });
 }
 
-document.addEventListener('DOMContentLoaded', async ()=>{ wire(); await reload(); });
+document.addEventListener('DOMContentLoaded', async ()=>{ wire(document.getElementById('adminPwd').addEventListener('input', ()=>{
+  document.getElementById('toggleEdit').disabled = !isAdmin();
+});
+document.getElementById('toggleEdit').addEventListener('click', ()=>{
+  if(!isAdmin()) return;
+  editorOpen = !editorOpen;
+  render();
+});
+); await reload(); });
+function fillModalSelects(){
+  document.querySelector('#mEmp').innerHTML = cache.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.querySelector('#mProj').innerHTML = cache.projects.map(p=>`<option value="${p.id}">${p.number} — ${p.name}</option>`).join('');
+}
+function openTaskModal(rec){
+  if(!isAdmin()) return alert('Wachtwoord vereist');
+  fillModalSelects();
+  const isEdit = !!(rec && rec.id);
+  document.querySelector('#taskTitle').textContent = isEdit ? 'Taak bewerken' : 'Taak toevoegen';
+  document.querySelector('#mId').value = rec?.id || '';
+  document.querySelector('#mEmp').value = String(rec?.employee_id || (cache.employees[0]?.id||''));
+  document.querySelector('#mProj').value = String(rec?.project_id || (cache.projects[0]?.id||''));
+  document.querySelector('#mStartDate').value = rec?.start_date || '';
+  document.querySelector('#mEndDate').value   = rec?.end_date || rec?.start_date || '';
+  document.querySelector('#mStartTime').value = rec?.start_time || '08:00';
+  document.querySelector('#mEndTime').value   = rec?.end_time || '16:00';
+  document.querySelector('#mType').value      = rec?.type || 'productie';
+  document.querySelector('#mNotes').value     = rec?.notes || '';
+  document.getElementById('mDelete').disabled = !isEdit;
+  document.getElementById('taskModal').hidden = false;
+}
+function closeTaskModal(){ document.getElementById('taskModal').hidden = true; }
+
+document.addEventListener('click', (ev)=>{
+  if(ev.target.id==='modalClose' || ev.target.classList.contains('modal-backdrop')) closeTaskModal();
+});
+
+document.getElementById('mSave').addEventListener('click', async ()=>{
+  const rec = {
+    id: document.querySelector('#mId').value ? Number(document.querySelector('#mId').value): undefined,
+    employee_id: Number(document.querySelector('#mEmp').value),
+    project_id:  Number(document.querySelector('#mProj').value),
+    start_date:  document.querySelector('#mStartDate').value,
+    end_date:    document.querySelector('#mEndDate').value || document.querySelector('#mStartDate').value,
+    start_time:  document.querySelector('#mStartTime').value,
+    end_time:    document.querySelector('#mEndTime').value,
+    type:        document.querySelector('#mType').value,
+    notes:       document.querySelector('#mNotes').value || null,
+  };
+  if(!rec.employee_id||!rec.project_id||!rec.start_date||!rec.start_time||!rec.end_time) return alert('Vul alle velden in');
+  if(rec.end_date < rec.start_date) return alert('Einddatum ligt vóór startdatum');
+  if(rec.end_time <= rec.start_time) return alert('Eindtijd moet na starttijd liggen');
+  try{
+    if(rec.id){
+      const { error } = await sb.from('assignments').update(rec).eq('id', rec.id);
+      if(error) throw error;
+    } else {
+      const { error } = await sb.from('assignments').insert(rec);
+      if(error) throw error;
+    }
+    closeTaskModal();
+    await reload();
+  }catch(e){
+    alert('Opslaan mislukt: ' + (e?.message||e));
+    console.error(e);
+  }
+});
+
+document.getElementById('mDelete').addEventListener('click', async ()=>{
+  const id = document.querySelector('#mId').value;
+  if(!id) return;
+  if(!confirm('Deze taak verwijderen?')) return;
+  try{
+    const { error } = await sb.from('assignments').delete().eq('id', Number(id));
+    if(error) throw error;
+    closeTaskModal();
+    await reload();
+  }catch(e){
+    alert('Verwijderen mislukt: ' + (e?.message||e));
+    console.error(e);
+  }
+});
+
+// Item klik: openen om te bewerken
+item.addEventListener('click', ()=>{ openTaskModal(a); });
+
+// Klik op lege cel: nieuw met voorgeselecteerde medewerker/datum
+cell.querySelector('.dropzone').addEventListener('click', ()=>{
+  if(!isAdmin()) return;
+  const iso = isoDateStr(day); // zorg dat isoDateStr(d) lokale datum gebruikt (jouw versie had dit al)
+  openTaskModal({
+    employee_id: emp.id,
+    project_id: cache.projects[0]?.id || null,
+    start_date: iso,
+    end_date: iso,
+    start_time: '08:00',
+    end_time: '16:00',
+    type: 'productie',
+    notes: null
+  });
+});
+
+
