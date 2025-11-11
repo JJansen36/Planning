@@ -81,3 +81,4 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   .layout{grid-template-columns:1fr}
   .grid{grid-template-columns:160px repeat(7,1fr)}
 }
+
