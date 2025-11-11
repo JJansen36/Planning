@@ -2,8 +2,8 @@
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LOVD Weekplanner — gedeeld</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOVD Weekplanner</title>
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 </head>
@@ -17,41 +17,40 @@
     <button id="todayBtn" class="btn ghost">Vandaag</button>
   </div>
   <div class="actions">
+    <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
     <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
     <button id="toggleEdit" class="btn" disabled>Beheer</button>
     <button id="exportBtn" class="btn ghost">⬇️ Export</button>
-    <label class="btn ghost file-label">⬆️ Import
-      <input type="file" id="importFile" accept=".json,application/json" />
-    </label>
   </div>
 </header>
 
 <main class="layout">
-  <!-- Kalender links, beheerpaneel rechts -->
   <section class="board">
-    <div id="gridWrap">
+    <div class="grid-wrap">
       <div id="gridWeek1" class="grid"></div>
+      <div id="vehWeek1" class="vehiclebar"></div>
+    </div>
+    <div class="grid-wrap">
       <div id="gridWeek2" class="grid"></div>
+      <div id="vehWeek2" class="vehiclebar"></div>
     </div>
   </section>
 
   <aside class="panel" id="editorPanel" hidden>
     <h2>Beheer</h2>
-
     <section class="card">
       <h3>Projecten</h3>
-      <div class="row">
+      <div class="row three">
         <input id="projNumber" placeholder="Nr (bijv. P-25087)" />
         <input id="projName" placeholder="Naam" />
-        <input id="projSect" placeholder="Sectie (onderdeel)" />
+        <input id="projSect" placeholder="Sectie" />
         <button id="addProj" class="btn small">+ Voeg toe</button>
       </div>
       <ul id="projList" class="list small"></ul>
     </section>
-
     <section class="card">
       <h3>Medewerkers</h3>
-      <div class="row">
+      <div class="row two">
         <input id="empName" placeholder="Naam medewerker" />
         <button id="addEmp" class="btn small">+ Voeg toe</button>
       </div>
@@ -60,55 +59,30 @@
   </aside>
 </main>
 
-<!-- Cel + item templates -->
-<template id="cellTpl">
-  <div class="cell">
-    <div class="dropzone"></div>
-    <div class="items"></div>
-  </div>
-</template>
-<template id="itemTpl">
-  <div class="item">
-    <div class="title"></div>
-    <div class="meta"></div>
-    <button class="x" title="Verwijder">✕</button>
-  </div>
-</template>
+<template id="cellTpl"><div class="cell"><div class="dropzone"></div><div class="items"></div></div></template>
+<template id="itemTpl"><div class="item"><span class="flag" hidden>!</span><div class="title"></div><div class="meta"></div><button class="x" title="Verwijder">✕</button></div></template>
 
-<!-- MODAL: taak toevoegen/bewerken -->
 <div id="taskModal" class="modal" hidden>
   <div class="modal-backdrop"></div>
   <div class="modal-dialog">
-    <header class="modal-head">
-      <h3 id="taskTitle">Taak</h3>
-      <button id="modalClose" class="icon-btn" title="Sluiten">×</button>
-    </header>
+    <header class="modal-head"><h3 id="taskTitle">Taak</h3><button id="modalClose" class="icon-btn">×</button></header>
     <div class="modal-body">
       <input type="hidden" id="mId" />
       <div class="grid2">
-        <label>Medewerker
-          <select id="mEmp"></select>
-        </label>
-        <label>Project
-          <select id="mProj"></select>
-        </label>
+        <label>Medewerker <select id="mEmp"></select></label>
+        <label>Project <select id="mProj"></select></label>
       </div>
       <div class="grid2">
-        <label>Start datum
-          <input type="date" id="mStartDate" />
-        </label>
-        <label>Eind datum
-          <input type="date" id="mEndDate" />
-        </label>
+        <label>Start datum <input type="date" id="mStartDate" /></label>
+        <label>Eind datum  <input type="date" id="mEndDate" /></label>
       </div>
       <div class="grid2">
-        <label>Start tijd
-          <input type="time" id="mStartTime" value="08:00" />
-        </label>
-        <label>Eind tijd
-          <input type="time" id="mEndTime" value="16:00" />
-        </label>
+        <label>Start tijd <input type="time" id="mStartTime" value="08:00" /></label>
+        <label>Eind tijd  <input type="time" id="mEndTime" value="16:00" /></label>
       </div>
+      <label>Urgent?
+        <select id="mUrgent"><option value="false">Nee</option><option value="true">Ja</option></select>
+      </label>
       <label>Type (kleur)
         <select id="mType">
           <option value="productie">Groen — productie</option>
@@ -116,19 +90,33 @@
           <option value="vrij">Rood — vrij</option>
         </select>
       </label>
-      <label>Notitie
-        <input id="mNotes" placeholder="Optioneel" />
-      </label>
+      <div class="grid2" id="vehicleRow">
+        <label>Voertuig (alleen bij montage)
+          <select id="mVehicle">
+            <option value="nvt">N.v.t.</option>
+            <option value="bus">Bus</option>
+            <option value="bakwagen">Bakwagen</option>
+          </select>
+        </label>
+        <div></div>
+      </div>
+      <label>Notitie <input id="mNotes" placeholder="Optioneel" /></label>
     </div>
     <footer class="modal-foot">
-      <button id="mDelete" class="icon-btn danger" title="Verwijderen" disabled>×</button>
+      <button id="mDelete" class="icon-btn danger" disabled>×</button>
       <div class="spacer"></div>
       <button id="mSave" class="btn">Opslaan</button>
     </footer>
   </div>
 </div>
 
+<script>
+  window.__CONF__ = {
+    url: "https://qejxwoxaurbwllihnvim.supabase.co",
+    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0",
+    admin: "lovd-admin"
+  };
+</script>
 <script src="app.js"></script>
 </body>
 </html>
-

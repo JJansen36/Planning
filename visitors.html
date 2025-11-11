@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOVD — voertuig reserveren</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="logo">LOVD</div><div class="title">Voertuig reserveren</div></div>
+  <a class="btn ghost" href="index.html">← Terug naar planner</a>
+</header>
+<main class="layout single">
+  <section class="panel">
+    <h2>Reserveer bus / bakwagen</h2>
+    <div class="card">
+      <div class="row two">
+        <label>Medewerker <select id="rEmp"></select></label>
+        <label>Voertuig
+          <select id="rVeh"><option value="bus">Bus</option><option value="bakwagen">Bakwagen</option></select>
+        </label>
+      </div>
+      <div class="row"><label>Datum <input type="date" id="rDate" /></label></div>
+      <div class="row two">
+        <label>Start <input type="time" id="rStart" value="18:00" /></label>
+        <label>Eind <input type="time" id="rEnd" value="23:00" /></label>
+      </div>
+      <label>Opmerking <input id="rNote" placeholder="Optioneel (bijv. privé)" /></label>
+      <button id="rSave" class="btn">Reserveren</button>
+      <p id="rMsg" class="muted"></p>
+    </div>
+    <h3>Aankomende reserveringen</h3>
+    <ul id="rList" class="list"></ul>
+  </section>
+</main>
+<script>
+  window.__CONF__ = window.__CONF__ || {
+    url: "https://qejxwoxaurbwllihnvim.supabase.co",
+    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0"
+  };
+</script>
+<script src="visitors.js"></script>
+</body>
+</html>
