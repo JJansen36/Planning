@@ -30,85 +30,109 @@
     </div>
   </header>
 
-  <!-- Kalender eerst -->
-  <main class="layout layout--calendar-first">
-    <section class="board board--full">
-      <div id="gridWrap">
-        <div id="gridWeek1" class="grid"></div>
-        <div id="gridWeek2" class="grid"></div>
+
+<main class="layout">
+  <!-- KALENDER LINKS/BOVEN -->
+  <section class="board">
+    <div id="gridWrap">
+      <div id="gridWeek1" class="grid"></div>
+      <div id="gridWeek2" class="grid"></div>
+    </div>
+  </section>
+
+  <!-- BEHEER RECHTS -->
+  <aside class="panel" id="editorPanel" hidden>
+    <h2>Beheer</h2>
+
+    <section class="card">
+      <h3>Medewerkers</h3>
+      <div class="row">
+        <input id="empName" placeholder="Naam medewerker" />
+        <button id="addEmp" class="btn small">+ Voeg toe</button>
       </div>
+      <ul id="empList" class="list"></ul>
     </section>
 
-    <!-- Beheerpanelen compacter en in 2 kolommen -->
-    <aside class="panel panel--compact" id="editorPanel" hidden>
-      <h2>Beheer</h2>
+    <section class="card">
+      <h3>Projecten</h3>
+      <input id="projNumber" placeholder="Projectnummer (bijv. P-25087)" />
+      <input id="projName" placeholder="Naam / omschrijving" />
+      <input id="projSect" placeholder="Sectie (onderdeel)" />
+      <button id="addProj" class="btn small">+ Voeg toe</button>
+      <ul id="projList" class="list small"></ul>
+    </section>
 
-      <div class="admin-grid">
-        <section class="card card--narrow">
-          <h3>Medewerkers</h3>
-          <div class="row row--tight">
-            <input id="empName" placeholder="Naam medewerker"/>
-            <button id="addEmp" class="btn small">+ Voeg toe</button>
-          </div>
-          <ul id="empList" class="list list--editable"></ul>
-        </section>
-
-        <section class="card card--narrow">
-          <h3>Projecten</h3>
-          <div class="row row--tight">
-            <input id="projNumber" placeholder="Nr" class="input--xs"/>
-            <input id="projName" placeholder="Naam" class="input--sm"/>
-            <input id="projSect" placeholder="Sectie" class="input--xs"/>
-            <button id="addProj" class="btn small">+ Voeg toe</button>
-          </div>
-          <ul id="projList" class="list list--editable small"></ul>
-        </section>
-
-        <section class="card card--wide">
-          <h3>Taak toevoegen/bewerken</h3>
-          <div class="row">
-            <label>Medewerker
-              <select id="qEmp"></select>
-            </label>
-            <label>Project
-              <select id="qProj"></select>
-            </label>
-          </div>
-          <div class="row">
-            <label>Start datum
-              <input type="date" id="qStartDate"/>
-            </label>
-            <label>Eind datum
-              <input type="date" id="qEndDate"/>
-            </label>
-          </div>
-          <div class="row">
-            <label>Start tijd
-              <input type="time" id="qStartTime" value="08:00"/>
-            </label>
-            <label>Eind tijd
-              <input type="time" id="qEndTime" value="16:00"/>
-            </label>
-          </div>
-          <label>Type (kleur)
-            <select id="qType">
-              <option value="productie">Groen — productie</option>
-              <option value="montage">Geel — montage</option>
-              <option value="vrij">Rood — vrij</option>
-            </select>
-          </label>
-          <label>Notitie
-            <input id="qNotes" placeholder="Optioneel"/>
-          </label>
-          <div class="row row--tight">
-            <button id="qSave" class="btn">Opslaan</button>
-            <button id="qDelete" class="btn danger icon-btn" disabled title="Verwijderen"></button>
-          </div>
-          <input type="hidden" id="qId"/>
-        </section>
+    <!-- Deze oude card houden we verborgen omdat we nu de popup gebruiken -->
+    <section class="card" hidden>
+      <h3>Taak toevoegen/bewerken</h3>
+      <div class="row">
+        <label>Medewerker <select id="qEmp"></select></label>
+        <label>Project <select id="qProj"></select></label>
       </div>
-    </aside>
-  </main>
+      <div class="row">
+        <label>Start datum <input type="date" id="qStartDate" /></label>
+        <label>Eind datum  <input type="date" id="qEndDate" /></label>
+      </div>
+      <div class="row">
+        <label>Start tijd <input type="time" id="qStartTime" value="08:00" /></label>
+        <label>Eind tijd  <input type="time" id="qEndTime" value="16:00" /></label>
+      </div>
+      <label>Type (kleur)
+        <select id="qType">
+          <option value="productie">Groen — productie</option>
+          <option value="montage">Geel — montage</option>
+          <option value="vrij">Rood — vrij</option>
+        </select>
+      </label>
+      <label>Notitie <input id="qNotes" placeholder="Optioneel" /></label>
+      <div class="row">
+        <button id="qSave" class="btn">Opslaan</button>
+        <button id="qDelete" class="btn danger" disabled>Verwijder</button>
+      </div>
+      <input type="hidden" id="qId" />
+    </section>
+  </aside>
+</main>
+
+<!-- POPUP (modaal) VOOR TAAK TOEVOEGEN/BEWERKEN -->
+<div id="taskModal" class="modal" hidden>
+  <div class="modal-backdrop"></div>
+  <div class="modal-dialog">
+    <header class="modal-head">
+      <h3 id="taskTitle">Taak</h3>
+      <button id="modalClose" class="icon-btn" title="Sluiten">×</button>
+    </header>
+    <div class="modal-body">
+      <input type="hidden" id="mId" />
+      <div class="grid2">
+        <label>Medewerker <select id="mEmp"></select></label>
+        <label>Project    <select id="mProj"></select></label>
+      </div>
+      <div class="grid2">
+        <label>Start datum <input type="date" id="mStartDate" /></label>
+        <label>Eind datum  <input type="date" id="mEndDate" /></label>
+      </div>
+      <div class="grid2">
+        <label>Start tijd <input type="time" id="mStartTime" value="08:00" /></label>
+        <label>Eind tijd  <input type="time" id="mEndTime" value="16:00" /></label>
+      </div>
+      <label>Type (kleur)
+        <select id="mType">
+          <option value="productie">Groen — productie</option>
+          <option value="montage">Geel — montage</option>
+          <option value="vrij">Rood — vrij</option>
+        </select>
+      </label>
+      <label>Notitie <input id="mNotes" placeholder="Optioneel" /></label>
+    </div>
+    <footer class="modal-foot">
+      <button id="mDelete" class="icon-btn danger" title="Verwijderen" disabled>×</button>
+      <div class="spacer"></div>
+      <button id="mSave" class="btn">Opslaan</button>
+    </footer>
+  </div>
+</div>
+
 
   <template id="cellTpl">
     <div class="cell">
@@ -195,3 +219,4 @@
   </style>
 </body>
 </html>
+
