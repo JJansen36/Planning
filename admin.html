@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOVD — Beheer</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="logo">LOVD</div><div class="title">Beheer</div></div>
+  <div class="actions">
+    <a class="btn ghost" href="index.html">← Terug naar planner</a>
+    <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
+  </div>
+</header>
+<main class="layout single">
+  <section class="panel">
+    <h2>Projecten</h2>
+    <div class="card">
+      <div class="row three">
+        <input id="projNumber" placeholder="Nr (bijv. P-25087)" />
+        <input id="projName" placeholder="Naam" />
+        <input id="projSect" placeholder="Sectie" />
+        <button id="addProj" class="btn small">+ Voeg toe</button>
+      </div>
+      <ul id="projList" class="list small"></ul>
+    </div>
+    <h2>Gebruikers</h2>
+    <div class="card">
+      <div class="row two">
+        <input id="empName" placeholder="Naam medewerker" />
+        <button id="addEmp" class="btn small">+ Voeg toe</button>
+      </div>
+      <ul id="empList" class="list"></ul>
+    </div>
+  </section>
+</main>
+<script>
+  window.__CONF__ = window.__CONF__ || {
+    url: "https://qejxwoxaurbwllihnvim.supabase.co",
+    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0",
+    admin: "lovd-admin"
+  };
+</script>
+<script src="admin.js"></script>
+</body>
+</html>

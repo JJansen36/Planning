@@ -11,7 +11,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .logo{font-weight:800;letter-spacing:.15em;background:#fff;color:#000;padding:4px 10px;border-radius:999px}
 .title{font-weight:600;opacity:.9}
 .week-nav{display:flex;gap:8px;align-items:center}
-.week-label{min-width:320px;text-align:center;font-weight:600}
+.week-label{min-width:320px;text-align:center;font-weight:400}
 .actions{display:flex;gap:8px;align-items:center}
 .pwd{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;border-radius:10px;padding:8px 10px;min-width:180px}
 .btn{border:1px solid var(--border);background:#17181b;color:#eaeaea;border-radius:10px;padding:8px 10px;cursor:pointer}
@@ -25,11 +25,14 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 label{display:grid;gap:6px;font-size:.95rem;color:#d8d8d8}
 input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;border-radius:10px;padding:10px 12px}
 .list{margin:0;padding-left:18px}.small li{font-size:.95rem;color:#cfcfcf}
-.board{overflow:auto}
+.board{overflow:auto
+  width: 100%;
+  max-width: none;}
 .grid-wrap{margin-bottom:10px}
 
 /* Kalender */
-.grid{display:grid;grid-template-columns:240px repeat(7, minmax(140px,1fr));border:1px solid var(--border);border-radius:12px;background:var(--panel);min-width:100%}
+.grid{display:grid;grid-template-columns: 150px repeat(7, minmax(120px, 1fr));border:1px solid var(--border);border-radius:12px;background:var(--panel);min-width:100%
+}
 .grid .corner,.grid .dow{background:#0f1012;border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:12px;font-weight:600;text-align:center}
 .grid .corner{position:sticky;left:0;z-index:3;text-align:left}
 .grid .emp{background:#0f1012;border-right:1px solid var(--border);padding:12px;font-weight:600;position:sticky;left:0;z-index:2}
@@ -47,9 +50,18 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .cell .dropzone{position:absolute;inset:0;border-radius:10px}.cell:hover .dropzone{outline:2px dashed #303238}
 
 /* Voertuig-balk */
-.vehiclebar{display:grid;grid-template-columns:240px repeat(7, minmax(140px,1fr));border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;overflow:hidden}
+.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#141518); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 .vehiclebar .label{background:#0f1012;border-right:1px solid var(--border);padding:8px 12px;font-weight:600;position:sticky;left:0;z-index:1}
-.vehiclebar .cell{border-right:1px solid var(--border);padding:8px 10px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.vehiclebar .cell{
+  padding: 2px 6px;          /* zo klein mogelijk */
+  min-height: auto;          /* geen vaste hoogte */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
 .vehiclebar .both{color:#fff}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
 .badge.bus{background:color-mix(in oklab, var(--violet) 30%, transparent)}
@@ -62,7 +74,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 @media (max-width:1080px){
   .layout{grid-template-columns:1fr}
   .grid{grid-template-columns:160px repeat(7,1fr)}
-  .vehiclebar{grid-template-columns:160px repeat(7,1fr)}
+  .vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 }
 /* modal */
 .modal{position:fixed;inset:0;display:block}
@@ -81,3 +93,66 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 /* Als JS 'urgent' toevoegt, tonen we de flag */
 .item.urgent .flag{ display:inline-flex; }
+
+
+/* --- Compactere layout + deleteknop rechtsboven in taken --- */
+html { font-size: 13px; }
+
+.board, .grid, .list, .card { font-size: 0.9rem; }
+.btn, input, select, textarea { font-size: 0.85rem; }
+h1, h2, h3 { font-size: 1rem; }
+
+.task {
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.task .remove {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.task .remove:hover {
+  color: #f55;
+}
+
+.task .remove::before {
+  content: "×";
+}
+
+
+/* --- Verwijder-kruisje rechtsboven in taak --- */
+.item{ padding-right: 28px; } /* ruimte voor de X zodat tekst niet eronder valt */
+.item .x{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 14px;
+  opacity: .8;
+}
+.item .x:hover{ opacity: 1; }
+
+
+/* LOVD team notifications row */
+.item.lovd {
+  background: rgba(68,147,255,.15);
+  outline: 2px solid #2a7bff;
+}
+
+@media (min-width: 1400px){
+  .cell .items{ gap: 8px; }
+  .board{ padding: 0 12px; }
+}
