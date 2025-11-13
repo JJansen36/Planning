@@ -39,8 +39,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 .cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:110px;position:relative}
 .cell .items{display:flex;flex-direction:column;gap:6px;padding:10px}
-
-.item {border-radius: 6px;overflow: hidden;}
+.item{position:relative;border:1px solid var(--accent-weak);border-radius:12px;padding:8px 10px;background:#141518;display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:6px}
 .item .title{font-size:.95rem;font-weight:700;color:#f5f5f5}
 .item .meta{grid-column:1 / -1;font-size:.85rem;color:var(--muted)}
 .item .x{border:none;background:transparent;color:#fff;font-weight:800;cursor:pointer}
@@ -51,15 +50,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .cell .dropzone{position:absolute;inset:0;border-radius:10px}.cell:hover .dropzone{outline:2px dashed #303238}
 
 /* Voertuig-balk */
-.vehiclebar,
-.planner,
-.board,
-.grid {
-  width: 100%;
-  min-width:100%;
-  margin: 0 auto;
-}
-
+.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 .vehiclebar .label{background:#0f1012;border-right:1px solid var(--border);padding:8px 12px;font-weight:600;position:sticky;left:0;z-index:1}
 .vehiclebar .cell{
   padding: 2px 6px;          /* zo klein mogelijk */
@@ -71,7 +62,6 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   text-overflow: ellipsis;
   overflow: hidden;
 }
-
 .vehiclebar .both{color:#fff}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
 .badge.bus{background:color-mix(in oklab, var(--violet) 30%, transparent)}
@@ -86,63 +76,36 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   .grid{grid-template-columns:160px repeat(7,1fr)}
   .vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 }
-/* modal – echte overlay, altijd boven kalender */
-.modal {
-  position: fixed;
-  inset: 0;
-  display: flex;              /* centreer de dialog */
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1000;              /* boven topbar + sticky kolommen */
-}
+/* modal */
+.modal{position:fixed;inset:0;display:block}
+.modal[hidden]{display:none}
+.modal-backdrop{position:absolute;inset:0;background:#0008}
+.modal-dialog{position:relative;z-index:1;max-width:720px;margin:6vh auto;background:#121316;border:1px solid var(--border);border-radius:14px}
+.modal-head,.modal-foot{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.modal-foot{border-top:1px solid var(--border);border-bottom:none;justify-content:flex-end}
+.modal-body{padding:12px;display:grid;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.spacer{flex:1}
+/* Verberg standaard het uitroepteken */
+.item .flag{ display:none; }
 
-.modal[hidden] {
-  display: none;
-}
+/* ... jouw bestaande item-styles ... */
 
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: #0008;
-  z-index: 1000;
-}
+/* Als JS 'urgent' toevoegt, tonen we de flag */
+.item.urgent .flag{ display:inline-flex; }
 
-.modal-dialog {
+
+/* --- Compactere layout + deleteknop rechtsboven in taken --- */
+html { font-size: 13px; }
+
+.board, .grid, .list, .card { font-size: 0.9rem; }
+.btn, input, select, textarea { font-size: 0.85rem; }
+h1, h2, h3 { font-size: 1rem; }
+
+.task {
   position: relative;
-  z-index: 1001;              /* boven de backdrop */
-  max-width: 720px;
-  width: 100%;
-  margin: 6vh 12px;
-  background: #121316;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  max-height: 88vh;           /* zodat hij op mobiel niet wordt afgeknipt */
-  overflow: auto;
+  padding-bottom: 0.5rem;
 }
-
-.modal-head,
-.modal-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-foot {
-  border-top: 1px solid var(--border);
-  border-bottom: none;
-  justify-content: flex-end;
-}
-
-/* optioneel: iets compacter op kleine schermen */
-@media (max-width: 768px) {
-  .modal-dialog {
-    margin: 4vh 8px;
-    max-height: 92vh;
-  }
-}
-
 
 .task .remove {
   position: absolute;
@@ -166,7 +129,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 
 /* --- Verwijder-kruisje rechtsboven in taak --- */
- /* ruimte voor de X zodat tekst niet eronder valt */
+.item{ padding-right: 28px; } /* ruimte voor de X zodat tekst niet eronder valt */
 .item .x{
   position: absolute;
   top: 6px;
@@ -198,14 +161,8 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .item .title { text-align: left; }
 .item .top1, .item .top2 { margin: 0; padding: 0; }
 /* Ensure task height doesn't change noticeably */
-
+.item { display: grid; grid-template-rows: auto auto auto; }
 /* Full-width calendar and layout */
 .layout, .board, .grid, .vehiclebar { width: 100vw; max-width: none; margin: 0; }
 
 .vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; }
-
-
-/* --- Task two-line title stacked vertically --- */
-.item { position: relative; display: flex; flex-direction: column; align-items: stretch; }
-.item .top1, .item .top2 { display:block; width:100%; text-align:left; }
-.item .meta { display:block; width:100%; margin-top:2px; text-align:left; }
