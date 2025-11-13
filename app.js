@@ -1,3 +1,37 @@
+
+// --- Project select: filter & quick-add ---
+function renderProjectOptions(filter, preselectId){
+  var q = String(filter||'').toLowerCase();
+  var opts = (cache.projects||[]).filter(function(p){
+    var label = (p.number ? (p.number+' — ') : '') + (p.name||'');
+    return !q || label.toLowerCase().includes(q);
+  }).map(function(p){
+    var label = (p.number ? (p.number+' — ') : '') + (p.name||'');
+    return '<option value="'+p.id+'">'+label+'</option>';
+  }).join('');
+  var sel = document.getElementById('mProj');
+  if (sel) sel.innerHTML = opts;
+  if (preselectId != null && sel) sel.value = String(preselectId);
+}
+
+async function quickAddProjectViaModal(){
+  if(!isAdmin()){ alert('Beheer-wachtwoord vereist om een project toe te voegen.'); return; }
+  var number = prompt('Projectnummer (optioneel):','');
+  if(number!==null){ number = number.trim(); }
+  var name = prompt('Projectnaam (verplicht):','');
+  if(name==null) return;
+  name = name.trim();
+  if(!name){ alert('Projectnaam is verplicht.'); return; }
+  try{
+    var { data, error } = await sb.from('projects').insert({ number: number||null, name: name }).select().single();
+    if(error){ alert('Project toevoegen mislukt: '+error.message); return; }
+    // update cache & UI
+    cache.projects.push(data);
+    renderProjectOptions(document.getElementById('mProjSearch')?.value || '', data.id);
+  }catch(e){
+    alert('Project toevoegen mislukt: '+(e?.message||e));
+  }
+}
 // app.js — clean full replacement with employee visibility + ordering
 const { url: SUPABASE_URL, key: SUPABASE_ANON_KEY } = window.__CONF__;
 const { createClient } = supabase;
@@ -237,14 +271,24 @@ function employeeRow(grid,emp,days){
       item.classList.add(a.type || 'productie');
       if(emp && emp.name==='LOVD'){ item.classList.add('lovd'); }
       if (a.urgent) item.classList.add('urgent');
-      item.querySelector('.title').textContent = (proj?proj.number:'?')+' — '+(proj?proj.name:'');
+      item.querySelector('.top1').textContent = (proj && proj.number ? proj.number : '') + (proj && proj.customer ? ' — '+proj.customer : '');
+      item.querySelector('.top2').textContent = (proj ? (proj.name||'') : '') + (proj && proj.section ? ' — '+proj.section : '');
 
-      var meta = a.start_time+'–'+a.end_time+' • '+durHoursLabel(a.start_time,a.end_time);
-      if (proj && proj.section) meta += ' • '+proj.section;
-      if (a.type === 'montage' && a.vehicle && a.vehicle !== 'nvt') meta += ' • '+a.vehicle;
-      if (a.notes) meta += ' • '+a.notes;
-      if (isAdmin()) { meta += (meta ? ' • ' : '') + durHoursWorkday(a.start_time,a.end_time) + ' u'; }
-      item.querySelector('.meta').textContent = meta;
+      
+      var showTimes = !(a.notes && String(a.notes).includes('[auto-time]'));
+      var parts = [];
+      // times first
+      var parts = []
+      // then (optionally) times
+      if (showTimes) parts.push(a.start_time+'–'+a.end_time);
+      // vehicle
+      if (a.type === 'montage' && a.vehicle && a.vehicle !== 'nvt') parts.push(a.vehicle);
+      // notes
+      if (a.notes) parts.push(a.notes);
+      // admin-only hours at the end
+      if (isAdmin()) parts.push(durHoursWorkday(a.start_time,a.end_time)+' u');
+      item.querySelector('.meta').textContent = parts.join(' • ');
+
 
       (function(obj){
         item.addEventListener('click', function(){ openTaskModal(obj, { readonly: !isAdmin() }); });
@@ -354,7 +398,7 @@ renderVehicleBar(bar,monday);
 function openTaskModal(rec, opts){
   opts = opts || {}; var readonly = !!opts.readonly;
   $('#mEmp').innerHTML = cache.employees.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
-  $('#mProj').innerHTML = cache.projects.map(function(p){return '<option value="'+p.id+'">'+p.number+' — '+p.name+'</option>';}).join('');
+  renderProjectOptions(document.getElementById('mProjSearch')?.value||'', rec.project_id);
 
   var edit = !!rec.id;
   $('#taskTitle').textContent = edit ? ('Taak'+(readonly?' (bekijken)':' bewerken')) : 'Taak toevoegen';
@@ -384,6 +428,8 @@ function openTaskModal(rec, opts){
     delBtn.disabled = !edit;
   }
 
+  document.getElementById('mProjSearch')?.addEventListener('input', function(e){ renderProjectOptions(e.target.value, document.getElementById('mProj')?.value); });
+  document.getElementById('mProjAdd')?.addEventListener('click', quickAddProjectViaModal);
   var inputs = ['#mEmp','#mProj','#mStartDate','#mEndDate','#mStartTime','#mEndTime','#mType','#mVehicle','#mUrgent','#mNotes']
     .map(function(s){return document.querySelector(s);});
   for(var i=0;i<inputs.length;i++){ if(inputs[i]) inputs[i].disabled = readonly; }

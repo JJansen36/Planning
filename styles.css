@@ -39,7 +39,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 .cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:110px;position:relative}
 .cell .items{display:flex;flex-direction:column;gap:6px;padding:10px}
-.item{position:relative;border:1px solid var(--accent-weak);border-radius:12px;padding:8px 10px;background:#141518;display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:6px}
+
 .item .title{font-size:.95rem;font-weight:700;color:#f5f5f5}
 .item .meta{grid-column:1 / -1;font-size:.85rem;color:var(--muted)}
 .item .x{border:none;background:transparent;color:#fff;font-weight:800;cursor:pointer}
@@ -50,7 +50,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .cell .dropzone{position:absolute;inset:0;border-radius:10px}.cell:hover .dropzone{outline:2px dashed #303238}
 
 /* Voertuig-balk */
-.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#141518); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
+.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 .vehiclebar .label{background:#0f1012;border-right:1px solid var(--border);padding:8px 12px;font-weight:600;position:sticky;left:0;z-index:1}
 .vehiclebar .cell{
   padding: 2px 6px;          /* zo klein mogelijk */
@@ -129,7 +129,7 @@ h1, h2, h3 { font-size: 1rem; }
 
 
 /* --- Verwijder-kruisje rechtsboven in taak --- */
-.item{ padding-right: 28px; } /* ruimte voor de X zodat tekst niet eronder valt */
+ /* ruimte voor de X zodat tekst niet eronder valt */
 .item .x{
   position: absolute;
   top: 6px;
@@ -155,4 +155,35 @@ h1, h2, h3 { font-size: 1rem; }
 @media (min-width: 1400px){
   .cell .items{ gap: 8px; }
   .board{ padding: 0 12px; }
+}
+
+/* Two-line title layout, same styling */
+.item .title { text-align: left; }
+.item .top1, .item .top2 { margin: 0; padding: 0; }
+/* Ensure task height doesn't change noticeably */
+
+/* Full-width calendar and layout */
+.layout, .board, .grid, .vehiclebar { width: 100vw; max-width: none; margin: 0; }
+
+.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; }
+
+
+/* --- Task two-line title stacked vertically --- */
+.item { position: relative; display: flex; flex-direction: column; align-items: stretch; }
+.item .top1, .item .top2 { display:block; width:100%; text-align:left; }
+.item .meta { display:block; width:100%; margin-top:2px; text-align:left; }
+
+/* --- Restore rounded corners and proper layout alignment --- */
+.item {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.vehiclebar,
+.planner,
+.board,
+.grid {
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
 }

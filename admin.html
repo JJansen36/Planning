@@ -15,19 +15,24 @@
     <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
   </div>
 </header>
+
 <main class="layout single">
   <section class="panel">
     <h2>Projecten</h2>
     <div class="card">
-      <div class="row three">
+      <div class="row two">
         <input id="projNumber" placeholder="Nr (bijv. P-25087)" />
-        <input id="projName" placeholder="Naam" />
-        <input id="projSect" placeholder="Sectie" />
-        <button id="addProj" class="btn small">+ Voeg toe</button>
+        <input id="projCustomer" placeholder="Klant" />
       </div>
-      <ul id="projList" class="list small"></ul>
+      <div class="row two">
+        <input id="projName" placeholder="Projectnaam" />
+        <input id="projSect" placeholder="Sectie" />
+      </div>
+      <button id="addProj" class="btn small" style="margin-top:6px">+ Voeg toe</button>
+      <ul id="projList" class="list small" style="margin-top:10px"></ul>
     </div>
-    <h2>Gebruikers</h2>
+
+    <h2>Medewerkers</h2>
     <div class="card">
       <div class="row two">
         <input id="empName" placeholder="Naam medewerker" />
@@ -37,6 +42,7 @@
     </div>
   </section>
 </main>
+
 <script>
   window.__CONF__ = window.__CONF__ || {
     url: "https://qejxwoxaurbwllihnvim.supabase.co",

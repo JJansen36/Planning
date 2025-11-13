@@ -38,7 +38,14 @@
 </main>
 
 <template id="cellTpl"><div class="cell"><div class="dropzone"></div><div class="items"></div></div></template>
-<template id="itemTpl"><div class="item"><span class="flag" hidden>!</span><div class="title"></div><div class="meta"></div><button class="x" title="Verwijder">✕</button></div></template>
+<template id="itemTpl">
+  <div class="item">
+    <button class="x" title="Verwijder"></button>
+    <div class="title top1"></div>
+    <div class="title top2"></div>
+    <div class="meta"></div>
+  </div>
+</template>
 
 <div id="taskModal" class="modal" hidden>
   <div class="modal-backdrop"></div>
@@ -48,7 +55,13 @@
       <input type="hidden" id="mId" />
       <div class="grid2">
         <label>Medewerker <select id="mEmp"></select></label>
-        <label>Project <select id="mProj"></select></label>
+        <label>Project
+  <div class="row two">
+    <input id="mProjSearch" placeholder="Zoek project… (nr of naam)" />
+    <button type="button" id="mProjAdd" class="btn small">+ Nieuw</button>
+  </div>
+  <select id="mProj"></select>
+</label>
       </div>
       <div class="grid2">
         <label>Start datum <div style="display:flex;gap:6px;align-items:center"><input type="date" id="mStartDate" /><button type="button" id="pickStart" class="icon-btn">📅</button></div></label>
