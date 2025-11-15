@@ -9,7 +9,10 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand"><div class="logo">LOVD</div><div class="title">Weekplanner</div></div>
+  <div class="brand">
+    <div class="logo">LOVD</div>
+    <div class="title">Weekplanner</div>
+  </div>
   <div class="week-nav">
     <button id="prevWeek" class="btn">← Vorige</button>
     <div id="weekLabel" class="week-label"></div>
@@ -37,76 +40,109 @@
   </section>
 </main>
 
-<template id="cellTpl"><div class="cell"><div class="dropzone"></div><div class="items"></div></div></template>
+<!-- Dag-cell: gesplitst in ochtend / middag -->
+<template id="cellTpl">
+  <div class="cell">
+    <div class="cell-inner">
+      <div class="cell-half cell-am">
+        <div class="dropzone" data-part="am"></div>
+        <div class="items items-am"></div>
+      </div>
+      <div class="cell-half cell-pm">
+        <div class="dropzone" data-part="pm"></div>
+        <div class="items items-pm"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<!-- Taak-item -->
 <template id="itemTpl">
   <div class="item">
-    <button class="x" title="Verwijder"></button>
-    <div class="title top1"></div>
-    <div class="title top2"></div>
+    <div class="x">×</div>
+    <div class="top top1"></div>
+    <div class="top top2"></div>
     <div class="meta"></div>
   </div>
 </template>
 
-<div id="taskModal" class="modal" hidden>
-  <div class="modal-backdrop"></div>
-  <div class="modal-dialog">
-    <header class="modal-head"><h3 id="taskTitle">Taak</h3><button id="modalClose" class="icon-btn">×</button></header>
+<!-- =======================
+     TAAK MODAL (NIEUWE LAYOUT)
+     ======================= -->
+<div id="taskModal" class="modal-backdrop" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <span id="taskTitle">Taak toevoegen</span>
+      <button id="modalClose">×</button>
+    </div>
+
     <div class="modal-body">
-      <input type="hidden" id="mId" />
-      <div class="grid2">
-        <label>Medewerker <select id="mEmp"></select></label>
-        <label>Project
-  <div class="row two">
-    <input id="mProjSearch" placeholder="Zoek project… (nr of naam)" />
-    <button type="button" id="mProjAdd" class="btn small">+ Nieuw</button>
-  </div>
-  <select id="mProj"></select>
-</label>
+
+      <!-- Medewerker -->
+      <label class="lbl">Medewerker</label>
+      <select id="mEmp"></select>
+
+      <!-- Project -->
+      <label class="lbl">Project</label>
+      <div class="row">
+        <input id="mProjSearch" placeholder="Zoek project…">
+        <button id="mProjAdd" class="small-btn">+ Nieuw</button>
       </div>
-      <div class="grid2">
-        <label>Start datum <div style="display:flex;gap:6px;align-items:center"><input type="date" id="mStartDate" /><button type="button" id="pickStart" class="icon-btn">📅</button></div></label>
-        <label>Eind datum  <div style="display:flex;gap:6px;align-items:center"><input type="date" id="mEndDate" /><button type="button" id="pickEnd" class="icon-btn">📅</button></div></label>
-      </div>
-      <div class="grid2">
-        <label>Start tijd <input type="time" id="mStartTime" value="08:00" /></label>
-        <label>Eind tijd  <input type="time" id="mEndTime" value="16:00" /></label>
-      </div>
-      <label>Urgent?
-        <select id="mUrgent"><option value="false">Nee</option><option value="true">Ja</option></select>
-      </label>
-      <label>Type (kleur)
-        <select id="mType">
-          <option value="productie">Productie</option>
-          <option value="montage">Montage</option>
-          <option value="vrij">Vrij</option>
-        </select>
-      </label>
-      <div class="grid2" id="vehicleRow">
-        <label>Voertuig (alleen bij montage)
-          <select id="mVehicle">
-            <option value="nvt">N.v.t.</option>
-            <option value="bus">Bus</option>
-            <option value="bakwagen">Bakwagen</option>
-          </select>
-        </label>
-        <div></div>
-      </div>
-      <div class="grid2">
-        <label>Uren (30 min blokken)
-          <input type="number" id="mHours" step="0.5" min="0" max="12" placeholder="bijv. 8" />
-        </label>
-        <div></div>
+      <select id="mProj"></select>
+
+      <!-- Datums -->
+      <label class="lbl">Datum</label>
+      <div class="row">
+        <input type="date" id="mStartDate">
+        <input type="date" id="mEndDate">
       </div>
 
-      <label>Notitie <input id="mNotes" placeholder="Optioneel" /></label>
+      <!-- Dagdeel -->
+      <label class="lbl">Dagdeel</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mBlock" value="am"> Ochtend</label>
+        <label><input type="radio" name="mBlock" value="pm"> Middag</label>
+        <label><input type="radio" name="mBlock" value="full"> Hele dag</label>
+      </div>
+
+      <!-- Type taak -->
+      <label class="lbl">Type</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mType" value="productie"> Productie</label>
+        <label><input type="radio" name="mType" value="montage"> Montage</label>
+        <label><input type="radio" name="mType" value="vrij"> Vrij</label>
+      </div>
+
+      <!-- Voertuig (alleen bij montage) -->
+      <div id="vehicleRow">
+        <label class="lbl mt">Voertuig (montage)</label>
+        <div class="radio-group">
+          <label><input type="radio" name="mVehicle" value="nvt"> Geen</label>
+          <label><input type="radio" name="mVehicle" value="bus"> Bus</label>
+          <label><input type="radio" name="mVehicle" value="bakwagen"> Bakwagen</label>
+        </div>
+      </div>
+
+      <!-- Urgent -->
+      <label class="lbl mt">Urgent</label>
+      <label class="chk"><input type="checkbox" id="mUrgent"> Urgente taak</label>
+
+      <!-- Notitie -->
+      <label class="lbl mt">Notitie</label>
+      <textarea id="mNotes" placeholder="Optioneel"></textarea>
+
+      <input type="hidden" id="mId">
+
     </div>
-    <footer class="modal-foot">
-      <button id="mDelete" class="icon-btn danger" disabled>×</button>
-      <div class="spacer"></div>
-      <button id="mSave" class="btn">Opslaan</button>
-    </footer>
+
+    <!-- Buttons -->
+    <div class="modal-footer">
+      <button id="mDelete" class="danger">Verwijderen</button>
+      <button id="mSave" class="primary">Opslaan</button>
+    </div>
   </div>
 </div>
+
 
 <script>
   window.__CONF__ = {
@@ -116,5 +152,71 @@
   };
 </script>
 <script src="app.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // Sluit via backdrop
+  document.getElementById("taskModal").addEventListener("click", function(e){
+    if (e.target.classList.contains("modal-backdrop")) {
+      closeTaskModal();
+    }
+  });
+
+  // Sluit via X
+  document.getElementById("modalClose").addEventListener("click", function () {
+    closeTaskModal();
+  });
+
+  // Opslaan
+  document.getElementById("mSave").addEventListener("click", async function () {
+    await saveTask();
+  });
+
+  // Verwijderen
+  document.getElementById("mDelete").addEventListener("click", async function () {
+    await deleteTask();
+  });
+
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // Sluit via backdrop
+  document.addEventListener("click", function (e) {
+    if (e.target.classList.contains("modal-backdrop")) {
+      closeTaskModal();
+    }
+  });
+
+  // Sluit via X
+  const xBtn = document.getElementById("modalClose");
+  if (xBtn) {
+    xBtn.addEventListener("click", function () {
+      closeTaskModal();
+    });
+  }
+
+  // Opslaan
+  const saveBtn = document.getElementById("mSave");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async function () {
+      await saveTask();
+    });
+  }
+
+  // Verwijderen
+  const delBtn = document.getElementById("mDelete");
+  if (delBtn) {
+    delBtn.addEventListener("click", async function () {
+      await deleteTask();
+    });
+  }
+
+});
+</script>
+
 </body>
 </html>
+

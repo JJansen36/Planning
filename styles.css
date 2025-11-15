@@ -20,14 +20,18 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .layout{display:grid;grid-template-columns:1fr 420px;gap:16px;max-width:100%;margin:12px auto;padding:0 16px}
 .layout.single{grid-template-columns:1fr}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;height:max-content}
+
 .card{border:1px solid var(--border);background:#0f1012;border-radius:12px;padding:12px;display:grid;gap:10px;margin-bottom:12px}
 .row{display:grid;gap:10px}.row.two{grid-template-columns:1fr 1fr}.row.three{grid-template-columns:1fr 1fr 1fr 120px}
 label{display:grid;gap:6px;font-size:.95rem;color:#d8d8d8}
 input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;border-radius:10px;padding:10px 12px}
 .list{margin:0;padding-left:18px}.small li{font-size:.95rem;color:#cfcfcf}
-.board{overflow:auto
+.board{
+  overflow: auto;
   width: 100%;
-  max-width: none;}
+  max-width: none;
+}
+
 .grid-wrap{margin-bottom:10px}
 
 /* Kalender */
@@ -37,8 +41,54 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .grid .corner{position:sticky;left:0;z-index:3;text-align:left}
 .grid .emp{background:#0f1012;border-right:1px solid var(--border);padding:12px;font-weight:600;position:sticky;left:0;z-index:2}
 
-.cell{border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-height:110px;position:relative}
-.cell .items{display:flex;flex-direction:column;gap:6px;padding:10px}
+.cell{
+  border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  min-height:110px;
+  position:relative;
+}
+
+/* Binnenkant van de cel in 2 helften onder elkaar */
+.cell-inner{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  position:relative; /* nodig voor full-day */
+}
+
+/* Ochtend / middag helften */
+.cell-half{
+  flex:1;
+  position:relative;
+  padding-top:2px;      /* ruimte voor label */
+}
+
+.cell-half + .cell-half{
+  border-top:1px solid var(--border);
+}
+
+
+
+/* Items in beide helften */
+.cell .items,
+.cell .items-am,
+.cell .items-pm{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:6px 8px 8px 8px;
+}
+
+/* Dropzone per helft (alleen over die helft) */
+.cell .dropzone{
+  position:absolute;
+  inset:0;
+  border-radius:8px;
+}
+
+.cell-half:hover .dropzone{
+  outline:2px dashed #303238;
+}
 
 .item {border-radius: 6px;overflow: hidden;}
 .item .title{font-size:.95rem;font-weight:700;color:#f5f5f5}
@@ -48,7 +98,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .item.montage{background:rgba(242,199,68,.15);outline:2px solid var(--yellow)}
 .item.vrij{background:rgba(255,90,95,.12);outline:2px solid var(--red)}
 .item .flag{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;background:#ff3b30;color:#fff;font-weight:800}
-.cell .dropzone{position:absolute;inset:0;border-radius:10px}.cell:hover .dropzone{outline:2px dashed #303238}
+.item.full-day{position:absolute;inset:4px 6px;z-index:2;}
 
 /* Voertuig-balk */
 .vehiclebar,
@@ -86,53 +136,202 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   .grid{grid-template-columns:160px repeat(7,1fr)}
   .vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
 }
-/* modal – echte overlay, altijd boven kalender */
-.modal {
+/* Backdrop */
+.modal-backdrop {
   position: fixed;
   inset: 0;
-  display: flex;              /* centreer de dialog */
-  align-items: flex-start;
+  background: rgba(0,0,0,0.55);
+  display: flex;
   justify-content: center;
-  z-index: 1000;              /* boven topbar + sticky kolommen */
+  align-items: center;   /*  ⬅️ Geen ruimte boven/onder */
+  padding: 0;
+  z-index: 9999;
 }
 
-.modal[hidden] {
-  display: none;
+/* Modal */
+.modal {
+  width: 420px;          /* smaller = minder linksruimte */
+  background: #1e1e1e;
+  color: #ddd;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.7);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+#modalClose {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #ccc;
+  cursor: pointer;
+}
+
+.lbl {
+  display: block;
+  margin: 10px 0 4px;
+  font-size: 14px;
+  color: #bbb;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+input, select, textarea {
+  width: 100%;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  padding: 8px;
+  border-radius: 6px;
+  color: #ddd;
+  font-size: 14px;
+}
+
+textarea {
+  height: 60px;
+  resize: vertical;
+}
+
+.mt {
+  margin-top: 12px;
+}
+
+/* Footer */
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding-top: 10px;
+}
+
+button.primary {
+  background: #2f6efc;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button.danger {
+  background: #a8323c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.small-btn {
+  background: #333;
+  border: 1px solid #555;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ccc;
+  font-size: 12px;
+}
+
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 15px;
+  margin: 4px 0 10px;
+}
+
+.small-btn {
+  background: #333;
+  border: 1px solid #555;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #ccc;
+}
+
+input, select, textarea {
+  width: 100%;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  padding: 7px;
+  border-radius: 6px;
+  color: #ddd;
+}
+
+textarea {
+  height: 60px;
+  resize: vertical;
+}
+
+.chk input {
+  margin-right: 5px;
+}
+
+.mt {
+  margin-top: 12px;
+}
+
+/* Footer buttons */
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+button.primary {
+  background: #2f6efc;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button.danger {
+  background: #a8323c;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: #0008;
-  z-index: 1000;
-}
-
-.modal-dialog {
-  position: relative;
-  z-index: 1001;              /* boven de backdrop */
-  max-width: 720px;
-  width: 100%;
-  margin: 6vh 12px;
-  background: #121316;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  max-height: 88vh;           /* zodat hij op mobiel niet wordt afgeknipt */
+  background: rgba(0,0,0,0.5);
   overflow: auto;
+  padding-top: 50px;
 }
-
-.modal-head,
-.modal-foot {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-foot {
-  border-top: 1px solid var(--border);
-  border-bottom: none;
-  justify-content: flex-end;
+#taskModal[hidden] {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 /* optioneel: iets compacter op kleine schermen */
@@ -191,12 +390,12 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 @media (min-width: 1400px){
   .cell .items{ gap: 8px; }
-  .board{ padding: 0 12px; }
+  .board{ padding: 8px 12px; }
 }
 
 /* Two-line title layout, same styling */
 .item .title { text-align: left; }
-.item .top1, .item .top2 { margin: 0; padding: 0; }
+.item .top1, .item .top2 { margin: 0; padding: 0px; }
 /* Ensure task height doesn't change noticeably */
 
 /* Full-width calendar and layout */
@@ -206,6 +405,20 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 
 /* --- Task two-line title stacked vertically --- */
-.item { position: relative; display: flex; flex-direction: column; align-items: stretch; }
-.item .top1, .item .top2 { display:block; width:100%; text-align:left; }
-.item .meta { display:block; width:100%; margin-top:2px; text-align:left; }
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 6px;
+  overflow: hidden;
+  padding: 1px 2px 2px 2px; /* ← nieuw */
+}
+
+.task.urgent::before {
+  content: "❗";
+  color: red;
+  font-weight: bold;
+  margin-right: 6px;
+  font-size: 16px;
+}

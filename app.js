@@ -13,6 +13,12 @@ function renderProjectOptions(filter, preselectId){
   if (sel) sel.innerHTML = opts;
   if (preselectId != null && sel) sel.value = String(preselectId);
 }
+function isMorning(hm){
+  // alles vóór 13:00u = ochtend
+  var parts = (String(hm).slice(0,5) || '00:00').split(':');
+  var h = parseInt(parts[0] || '0', 10);
+  return h < 13;
+}
 
 async function quickAddProjectViaModal(){
   if(!isAdmin()){ alert('Beheer-wachtwoord vereist om een project toe te voegen.'); return; }
@@ -50,6 +56,8 @@ function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function getWeekNumber(d){ const date=new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const dayNum=date.getUTCDay()||7; date.setUTCDate(date.getUTCDate()+4-dayNum); const yearStart=new Date(Date.UTC(date.getUTCFullYear(),0,1)); const weekNo=Math.ceil((((date-yearStart)/86400000)+1)/7); return String(weekNo).padStart(2,'0');}
 function toMin(hm){const parts=(hm||'00:00').split(':'); const h=parseInt(parts[0]||'0',10), m=parseInt(parts[1]||'0',10); return h*60+m;}
 function overlap(s1,e1,s2,e2){const a1=toMin(s1),a2=toMin(e1),b1=toMin(s2),b2=toMin(e2);return a1<b2&&b1<a2;}
+function setVal(id, value){var el = document.getElementById(id);if (el) el.value = value;}
+
 
 // Work windows in minutes: [07:30-09:30], [09:45-12:30], [13:00-16:00]
 const WORK_WINDOWS = [
@@ -80,6 +88,72 @@ function durHoursWorkday(startHm,endHm){
   const hours = mins/60;
   const rounded = Math.round(hours*10)/10;
   return String(rounded).replace(/\.0$/, '');
+}
+
+function timesForBlock(block){
+  if (block === 'pm')   return { start: '13:00', end: '16:00' };
+  if (block === 'full') return { start: '07:30', end: '16:00' };
+  return { start: '07:30', end: '12:30' }; // standaard: ochtend
+}
+
+function blockFromTimes(startHm, endHm){
+  const s = _toMinLocal(startHm || '07:30');
+  const e = _toMinLocal(endHm || '16:00');
+  if (s < 13*60 && e <= 13*60) return 'am';   // alleen ochtend
+  if (s >= 13*60)              return 'pm';   // alleen middag
+  return 'full';                               // anders: hele dag
+}
+
+
+
+// Voeg minuten toe binnen de werkvensters (werkt samen met WORK_WINDOWS)
+function _addWorkMinutes(startHm, minutes){
+  let cur = _toMinLocal(startHm);   // huidige tijd in minuten (0–1439)
+  let remaining = minutes;
+  let dayOffset = 0;                // verschuiving per dag in minuten
+
+  while (remaining > 0){
+    let progressed = false;
+
+    for (let i = 0; i < WORK_WINDOWS.length; i++){
+      let wStart = WORK_WINDOWS[i][0] + dayOffset;
+      let wEnd   = WORK_WINDOWS[i][1] + dayOffset;
+
+      // als we al voorbij dit venster zijn → volgende venster
+      if (cur > wEnd) continue;
+
+      // als we vóór het venster zitten → spring naar begin venster
+      if (cur < wStart) cur = wStart;
+
+      let avail = wEnd - cur;
+      if (avail <= 0) continue;
+
+      if (remaining <= avail){
+        // klaar binnen dit venster
+        cur += remaining;
+        remaining = 0;
+      } else {
+        // hele venster benutten, dan naar het volgende
+        cur += avail;
+        remaining -= avail;
+      }
+
+      progressed = true;
+      if (remaining === 0) break;
+    }
+
+    // niks gevonden in deze dag → naar de volgende dag, eerste venster
+    if (!progressed){
+      dayOffset += 24*60;
+      cur = WORK_WINDOWS[0][0] + dayOffset;
+    }
+  }
+
+  // terug naar tijd-van-de-dag
+  let t = ((cur % (24*60)) + (24*60)) % (24*60);
+  let h = Math.floor(t / 60);
+  let m = t % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
 
 
@@ -136,14 +210,22 @@ async function addEmployee(name){
 async function updateEmployee(id, patch){
   if(!isAdmin()) { alert('Wachtwoord vereist'); return; }
 
-  // we gebruiken nu alleen show_in_calendar via RPC
+  // we gebruiken hier alleen show_in_calendar
   if (!('show_in_calendar' in patch)) return;
-  const pw = document.getElementById('adminPwd').value || '';
-  const { error } = await sb.rpc('set_employee_visibility', { p_password: ADMIN_PW, p_id: id, p_show: t.checked });
-                    await sb.rpc('swap_employee_order', { p_password: ADMIN_PW, p_id_a: id, p_id_b: neighborId });
-  if(error) { alert(error.message); return; }
-  await reload();
+
+  const { error } = await sb.rpc('set_employee_visibility', {
+    p_password: ADMIN_PW,
+    p_id: Number(id),
+    p_show: !!patch.show_in_calendar
+  });
+
+  if(error){ 
+    alert(error.message); 
+  } else {
+    await reload();
+  }
 }
+
 
 async function moveEmployee(id, dir){
   if(!isAdmin()) { alert('Wachtwoord vereist'); return; }
@@ -256,43 +338,57 @@ function headerRow(grid,monday){
 }
 function employeeRow(grid,emp,days){
   grid.appendChild(el('div','emp',emp.name));
+
   for(var d=0; d<days.length; d++){
     var day = days[d];
-    var cell=document.getElementById('cellTpl').content.cloneNode(true).firstElementChild;
-    var iso=isoDateStr(day);
-    var list=cache.assignments
+    var cell = document.getElementById('cellTpl').content.cloneNode(true).firstElementChild;
+    var iso  = isoDateStr(day);
+
+    var inner       = cell.querySelector('.cell-inner');
+    var amContainer = cell.querySelector('.items-am') || cell.querySelector('.items');
+    var pmContainer = cell.querySelector('.items-pm') || cell.querySelector('.items');
+
+    var list = cache.assignments
       .filter(function(a){ return a.employee_id===emp.id && inRange(iso,a.start_date,a.end_date); })
       .sort(function(a,b){ return (a.start_date+a.start_time).localeCompare(b.start_date+b.start_time); });
 
     for(var k=0;k<list.length;k++){
-      var a=list[k];
+      var a = list[k];
       var proj = cache.projects.find(function(p){ return p.id===a.project_id; });
       var item = document.getElementById('itemTpl').content.cloneNode(true).firstElementChild;
+
       item.classList.add(a.type || 'productie');
       if(emp && emp.name==='LOVD'){ item.classList.add('lovd'); }
       if (a.urgent) item.classList.add('urgent');
-      item.querySelector('.top1').textContent = (proj && proj.number ? proj.number : '') + (proj && proj.customer ? ' — '+proj.customer : '');
-      item.querySelector('.top2').textContent = (proj ? (proj.name||'') : '') + (proj && proj.section ? ' — '+proj.section : '');
 
-      
-      var showTimes = !(a.notes && String(a.notes).includes('[auto-time]'));
+      var top1 = item.querySelector('.top1');
+      var txt1 =
+          (proj && proj.number ? proj.number : '') +
+          (proj && proj.customer ? ' — '+proj.customer : '');
+
+          if (a.urgent) {
+          txt1 = "❗ " + txt1;
+}
+
+top1.textContent = txt1;
+
+      item.querySelector('.top2').textContent =
+        (proj ? (proj.name||'') : '') +
+        (proj && proj.section ? ' — '+proj.section : '');
+
+      // GEEN tijden/uren meer in meta
       var parts = [];
-      // times first
-      var parts = []
-      // then (optionally) times
-      if (showTimes) parts.push(a.start_time+'–'+a.end_time);
-      // vehicle
       if (a.type === 'montage' && a.vehicle && a.vehicle !== 'nvt') parts.push(a.vehicle);
-      // notes
       if (a.notes) parts.push(a.notes);
-      // admin-only hours at the end
-      if (isAdmin()) parts.push(durHoursWorkday(a.start_time,a.end_time)+' u');
       item.querySelector('.meta').textContent = parts.join(' • ');
 
-
-      (function(obj){
-        item.addEventListener('click', function(){ openTaskModal(obj, { readonly: !isAdmin() }); });
+      (function(rec){
+        item.addEventListener('click', function(){
+          openTaskModal(rec, { readonly: !isAdmin() });
+        });
       })(a);
+
+
 
       var delBtn = item.querySelector('.x');
       if (!isAdmin()) {
@@ -308,26 +404,52 @@ function employeeRow(grid,emp,days){
         })(a.id);
       }
 
-      cell.querySelector('.items').appendChild(item);
+      // ⬇️ Bepaal blok op basis van tijden en plaats item
+      var blk = blockFromTimes(a.start_time, a.end_time);
+
+      if (blk === 'full') {
+        // Hele dag: één groot blok over de hele cel
+        item.classList.add('full-day');
+        inner.appendChild(item);
+      } else if (blk === 'pm') {
+        pmContainer.appendChild(item);
+      } else {
+        amContainer.appendChild(item);
+      }
     }
 
-    cell.querySelector('.dropzone').addEventListener('click', function(){
-      openTaskModal({
-        project_id: cache.projects[0]?.id || null,
-        start_date: iso,
-        end_date: iso,
-        start_time: '07:00',
-        end_time: '16:00',
-        type: 'productie',
-        vehicle: 'nvt',
-        urgent: false,
-        notes: null
-      }, { readonly: !isAdmin() });
+    // Klik in bovenste / onderste helft → standaard blok & tijden
+    cell.querySelectorAll('.dropzone').forEach(function(dz){
+      var part = dz.getAttribute('data-part'); // "am" of "pm"
+
+      (function(dateStr, partVal, empId){
+        dz.addEventListener('click', function(){
+          var blk = (partVal === 'pm') ? 'pm' : 'am';
+          var t   = timesForBlock(blk);
+
+          openTaskModal({
+            employee_id: empId,
+            project_id:  cache.projects[0]?.id || null,
+            start_date:  dateStr,
+            end_date:    dateStr,
+            start_time:  t.start,
+            end_time:    t.end,
+            type:        'productie',
+            vehicle:     'nvt',
+            urgent:      false,
+            notes:       null,
+            block:       blk
+          }, { readonly: !isAdmin() });
+        });
+      })(iso, part, emp.id);
     });
+
 
     grid.appendChild(cell);
   }
 }
+
+
 
 function renderVehicleBar(bar,monday){
   bar.innerHTML='';
@@ -396,25 +518,52 @@ renderVehicleBar(bar,monday);
 
 // ---------- Modal (unchanged core) ----------
 function openTaskModal(rec, opts){
-  opts = opts || {}; var readonly = !!opts.readonly;
-  $('#mEmp').innerHTML = cache.employees.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('');
+  opts = opts || {}; 
+  var readonly = !!opts.readonly;
+
+  // dropdown medewerker vullen
+  $('#mEmp').innerHTML = cache.employees
+    .map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';})
+    .join('');
+
   renderProjectOptions(document.getElementById('mProjSearch')?.value||'', rec.project_id);
 
   var edit = !!rec.id;
   $('#taskTitle').textContent = edit ? ('Taak'+(readonly?' (bekijken)':' bewerken')) : 'Taak toevoegen';
-  $('#mId').value = rec.id || '';
-  $('#mEmp').value = String(rec.employee_id || (cache.employees[0]&&cache.employees[0].id) || '');
-  $('#mProj').value = String(rec.project_id || (cache.projects[0]&&cache.projects[0].id) || '');
-  $('#mStartDate').value = rec.start_date || '';
-  $('#mEndDate').value   = rec.end_date || rec.start_date || '';
-  $('#mStartTime').value = rec.start_time || '08:00';
-  $('#mEndTime').value   = rec.end_time   || '16:00';
-  $('#mType').value      = rec.type || 'productie';
-  $('#mVehicle').value   = rec.vehicle || 'nvt';
-  $('#mUrgent').value    = rec.urgent ? 'true' : 'false';
-  $('#mNotes').value     = rec.notes || '';
 
-  document.getElementById('vehicleRow').style.display = ($('#mType').value==='montage') ? '' : 'none';
+  // basisvelden
+  setVal('mId',        rec.id || '');
+  setVal('mEmp',       String(rec.employee_id || (cache.employees[0]&&cache.employees[0].id) || ''));
+  setVal('mProj',      String(rec.project_id  || (cache.projects[0]&&cache.projects[0].id)   || ''));
+  setVal('mStartDate', rec.start_date || '');
+  setVal('mEndDate',   rec.end_date   || rec.start_date || '');
+  setVal('mStartTime', rec.start_time || '07:30');
+  setVal('mEndTime',   rec.end_time   || '16:00');
+  setVal('mNotes',     rec.notes || '');
+
+  // 🔹 URGENT (checkbox)
+  var urgEl = document.getElementById('mUrgent');
+  if (urgEl) urgEl.checked = !!rec.urgent;
+
+  // 🔹 TYPE (radio name="mType")
+  var typeVal = rec.type || 'productie';
+  var typeRadio = document.querySelector('input[name="mType"][value="'+typeVal+'"]');
+  if (typeRadio) typeRadio.checked = true;
+
+  // 🔹 VOERTUIG (radio name="mVehicle")
+  var vehVal = rec.vehicle || 'nvt';
+  var vehRadio = document.querySelector('input[name="mVehicle"][value="'+vehVal+'"]');
+  if (vehRadio) vehRadio.checked = true;
+
+  // 🔹 VEHICLE ROW tonen/verbergen
+  var row = document.getElementById('vehicleRow');
+  if (row) row.style.display = (typeVal === 'montage') ? '' : 'none';
+
+  // 🔹 DAGDEEL (radio name="mBlock")
+  var blk = rec.block || blockFromTimes(rec.start_time, rec.end_time);
+  if (!blk) blk = 'am';
+  var blockRadio = document.querySelector('input[name="mBlock"][value="'+blk+'"]');
+  if (blockRadio) blockRadio.checked = true;
 
   var saveBtn   = document.getElementById('mSave');
   var delBtn    = document.getElementById('mDelete');
@@ -425,106 +574,358 @@ function openTaskModal(rec, opts){
   } else {
     saveBtn.style.display = '';
     delBtn.style.display  = edit ? '' : 'none';
-    delBtn.disabled = !edit;
+    delBtn.disabled       = !edit;
   }
 
-  document.getElementById('mProjSearch')?.addEventListener('input', function(e){ renderProjectOptions(e.target.value, document.getElementById('mProj')?.value); });
+  document.getElementById('mProjSearch')?.addEventListener(
+    'input',
+    function(e){ renderProjectOptions(e.target.value, document.getElementById('mProj')?.value); }
+  );
   document.getElementById('mProjAdd')?.addEventListener('click', quickAddProjectViaModal);
-  var inputs = ['#mEmp','#mProj','#mStartDate','#mEndDate','#mStartTime','#mEndTime','#mType','#mVehicle','#mUrgent','#mNotes']
+
+  // inputs readonly maken (selects + tekstvelden)
+  var inputs = ['#mEmp','#mProj','#mStartDate','#mEndDate','#mStartTime','#mEndTime','#mNotes']
     .map(function(s){return document.querySelector(s);});
   for(var i=0;i<inputs.length;i++){ if(inputs[i]) inputs[i].disabled = readonly; }
 
+  // ook radios disablen bij readonly
+  ['mType','mVehicle','mBlock'].forEach(function(name){
+    document.querySelectorAll('input[name="'+name+'"]').forEach(function(r){
+      r.disabled = readonly;
+    });
+  });
+
   document.getElementById('taskModal').hidden = false;
 }
-function closeTaskModal(){ $('#taskModal').hidden=true; }
 
-document.addEventListener('click',function(e){ if(e.target.id==='modalClose'||e.target.classList.contains('modal-backdrop')) closeTaskModal(); });
-$('#mSave').addEventListener('click',async function(){
-  var rec={
-    id: $('#mId').value?Number($('#mId').value):undefined,
-    employee_id:Number($('#mEmp').value),
-    project_id:Number($('#mProj').value),
-    start_date:$('#mStartDate').value,
-    end_date:$('#mEndDate').value||$('#mStartDate').value,
-    start_time:$('#mStartTime').value,
-    end_time:$('#mEndTime').value,
-    type:$('#mType').value,
-    vehicle:($('#mType').value==='montage'?$('#mVehicle').value:'nvt'),
-    urgent:($('#mUrgent').value==='true'),
-    notes:$('#mNotes').value||null
+
+function closeTaskModal(){ 
+  $('#taskModal').hidden = true; 
+}
+
+// backdrop / kruisje sluit modal
+document.addEventListener('click',function(e){ 
+  if(e.target.id==='modalClose' || e.target.classList.contains('modal-backdrop')) {
+    closeTaskModal(); 
+  }
+});
+
+
+
+// ---------- Modal & taak-bewerking ----------
+
+function openTaskModal(rec, opts) {
+  opts = opts || {};
+  var readonly = !!opts.readonly;
+
+  // Medewerker dropdown
+  var empSel = document.getElementById('mEmp');
+  if (empSel) {
+    empSel.innerHTML = (cache.employees || [])
+      .map(function (e) { return '<option value="'+e.id+'">'+e.name+'</option>'; })
+      .join('');
+  }
+
+  // Projectopties
+  renderProjectOptions(
+    document.getElementById('mProjSearch')?.value || '',
+    rec.project_id
+  );
+
+  var edit = !!rec.id;
+  var title = document.getElementById('taskTitle');
+  if (title) {
+    title.textContent = edit
+      ? ('Taak' + (readonly ? ' (bekijken)' : ' bewerken'))
+      : 'Taak toevoegen';
+  }
+
+  // Basisvelden
+  var firstEmpId = (cache.employees[0] && cache.employees[0].id) || '';
+  var firstProjId = (cache.projects[0] && cache.projects[0].id) || '';
+
+  setVal('mId',        rec.id || '');
+  setVal('mEmp',       String(rec.employee_id || firstEmpId));
+  setVal('mProj',      String(rec.project_id  || firstProjId));
+  setVal('mStartDate', rec.start_date || '');
+  setVal('mEndDate',   rec.end_date   || rec.start_date || '');
+  setVal('mStartTime', rec.start_time || '07:30');
+  setVal('mEndTime',   rec.end_time   || '16:00');
+  setVal('mNotes',     rec.notes || '');
+
+  // URGENT (checkbox)
+  var urgEl = document.getElementById('mUrgent');
+  if (urgEl) urgEl.checked = !!rec.urgent;
+
+  // TYPE (radio name="mType")
+  var typeVal = rec.type || 'productie';
+  var typeRadio = document.querySelector('input[name="mType"][value="'+typeVal+'"]');
+  if (typeRadio) typeRadio.checked = true;
+
+  // VEHICLE (radio name="mVehicle")
+  var vehVal = rec.vehicle || 'nvt';
+  var vehRadio = document.querySelector('input[name="mVehicle"][value="'+vehVal+'"]');
+  if (vehRadio) vehRadio.checked = true;
+
+  // Vehicle-rij tonen/verbergen
+  var vehicleRow = document.getElementById('vehicleRow');
+  if (vehicleRow) {
+    vehicleRow.style.display = (typeVal === 'montage') ? '' : 'none';
+  }
+
+  // DAGDEEL (radio name="mBlock")
+  var blk = rec.block || blockFromTimes(rec.start_time, rec.end_time);
+  if (!blk) blk = 'am';
+  var blockRadio = document.querySelector('input[name="mBlock"][value="'+blk+'"]');
+  if (blockRadio) blockRadio.checked = true;
+
+  // Buttons tonen / verbergen
+  var saveBtn = document.getElementById('mSave');
+  var delBtn  = document.getElementById('mDelete');
+
+  if (readonly) {
+    if (saveBtn) saveBtn.style.display = 'none';
+    if (delBtn)  delBtn.style.display  = 'none';
+  } else {
+    if (saveBtn) saveBtn.style.display = '';
+    if (delBtn)  {
+      delBtn.style.display  = edit ? '' : 'none';
+      delBtn.disabled       = !edit;
+    }
+  }
+
+  // Project zoeken / toevoegen
+  var projSearch = document.getElementById('mProjSearch');
+  if (projSearch) {
+    projSearch.oninput = function (e) {
+      renderProjectOptions(e.target.value, document.getElementById('mProj')?.value);
+    };
+  }
+  var projAdd = document.getElementById('mProjAdd');
+  if (projAdd) {
+    projAdd.onclick = quickAddProjectViaModal;
+  }
+
+  // Tekst/select inputs readonly
+  ['#mEmp','#mProj','#mStartDate','#mEndDate','#mStartTime','#mEndTime','#mNotes']
+    .map(function (s) { return document.querySelector(s); })
+    .forEach(function (inp) {
+      if (inp) inp.disabled = readonly;
+    });
+
+  // Radios readonly
+  ['mType','mVehicle','mBlock'].forEach(function (name) {
+    document.querySelectorAll('input[name="'+name+'"]').forEach(function (r) {
+      r.disabled = readonly;
+    });
+  });
+
+  document.getElementById('taskModal').hidden = false;
+}
+
+function closeTaskModal() {
+  var modal = document.getElementById('taskModal');
+  if (modal) modal.hidden = true;
+}
+
+// backdrop / kruisje sluit modal
+document.addEventListener('click', function (e) {
+  if (e.target.id === 'modalClose' || e.target.classList.contains('modal-backdrop')) {
+    closeTaskModal();
+  }
+});
+
+// ---------- Opslaan ----------
+
+document.getElementById('mSave').addEventListener('click', async function () {
+  if (!isAdmin()) {
+    alert('Wachtwoord vereist');
+    return;
+  }
+
+  // ✓ correcte id extractie
+  var idVal = document.getElementById('mId').value.trim();
+  var id = idVal ? Number(idVal) : null;
+
+  // ✓ alle elementen goed ophalen
+  var empEl   = document.getElementById('mEmp');
+  var projEl  = document.getElementById('mProj');
+  var sdEl    = document.getElementById('mStartDate');
+  var edEl    = document.getElementById('mEndDate');
+  var stEl    = document.getElementById('mStartTime');
+  var etEl    = document.getElementById('mEndTime');
+  var hrsEl   = document.getElementById('mHours');
+  var notesEl = document.getElementById('mNotes');
+  var urgEl   = document.getElementById('mUrgent');
+
+  var typeRadio  = document.querySelector('input[name="mType"]:checked');
+  var vehRadio   = document.querySelector('input[name="mVehicle"]:checked');
+  var blockRadio = document.querySelector('input[name="mBlock"]:checked');
+
+  // ✓ rec zonder id
+  var rec = {
+    employee_id: Number(empEl.value),
+    project_id: Number(projEl.value),
+    start_date: sdEl.value,
+    end_date: edEl.value,
+    start_time: stEl.value,
+    end_time: etEl.value,
+    type: typeRadio ? typeRadio.value : 'productie',
+    vehicle:
+      (typeRadio && typeRadio.value === 'montage' && vehRadio)
+        ? vehRadio.value
+        : 'nvt',
+    urgent: urgEl ? urgEl.checked : false,
+    notes: notesEl.value || null
   };
-  if(!rec.employee_id||!rec.project_id||!rec.start_date){ alert('Vul medewerker, project en datum in'); return; }
-  if(rec.end_date<rec.start_date){ alert('Einddatum vóór start'); return; }
-  if(rec.start_time && rec.end_time && rec.end_time<=rec.start_time){ alert('Eindtijd na start'); return; }
 
-  
-  // Prevent double booking for vehicles from tasks
-  if (rec.type === 'montage' && rec.vehicle && rec.vehicle !== 'nvt') {
-    const clash = hasVehicleClash(rec);
+  // ✓ blok stuurt tijden aan
+  if (blockRadio) {
+    var blk = blockRadio.value;
+    var t   = timesForBlock(blk);
+    rec.start_time = t.start;
+    rec.end_time   = t.end;
+    rec.block      = blk;
+  }
+
+  // ✓ uren → eindtijd
+  if (hrsEl && hrsEl.value) {
+    var hrs = parseFloat(hrsEl.value);
+    if (!isNaN(hrs) && hrs > 0) {
+      var startHm = rec.start_time;
+      var endHm   = _addWorkMinutes(startHm, Math.round(hrs * 2) * 30);
+      rec.start_time = startHm;
+      rec.end_time   = endHm;
+    }
+  }
+
+  // ✓ validatie
+  if (!rec.employee_id || !rec.project_id || !rec.start_date) {
+    alert('Vul medewerker, project en startdatum in.');
+    return;
+  }
+  if (rec.end_date < rec.start_date) {
+    alert('Einddatum ligt vóór startdatum.');
+    return;
+  }
+  if (rec.end_time <= rec.start_time) {
+    alert('Eindtijd moet na starttijd liggen.');
+    return;
+  }
+
+  // ✓ voertuig clash
+  if (rec.type === 'montage' && rec.vehicle !== 'nvt') {
+    var clash = hasVehicleClash(rec);
     if (clash) {
-      alert('Voertuig dubbel geboekt op '+clash.date+' ('+clash.start+'–'+clash.end+'). Kies een andere tijd of voertuig.');
+      alert(
+        'Voertuig dubbel geboekt op ' +
+        clash.date + ' (' + clash.start + '–' + clash.end + ').'
+      );
       return;
     }
   }
 
-  // derive start/end from hours (30-min blocks) if hours provided or times missing
-  var hoursInput = document.getElementById('mHours');
-  var hrs = hoursInput ? parseFloat(hoursInput.value||'') : NaN;
-  if (!isNaN(hrs) && hrs>0){
-    // compute end from start or from first window if no start provided
-    var startHm = rec.start_time && rec.start_time !== '' ? rec.start_time : '07:30';
-    var endHm = _addWorkMinutes(startHm, Math.round(hrs*60/30)*30);
-    rec.start_time = startHm;
-    rec.end_time = endHm;
-    // mark notes to hide explicit times in UI if start wasn't given
-    if ($('#mStartTime').value==='' || $('#mEndTime').value===''){
-      rec.notes = (rec.notes?rec.notes+' ':'') + '[auto-time]';
-    }
-  } else {
-    // fallback: require both times
-    if(!rec.start_time || !rec.end_time){ alert('Vul óf uren in, óf begin- en eindtijd.'); return; }
-  }
-// insert/update
-  if(!isAdmin()) { alert('Wachtwoord vereist'); return; }
-  if(rec.id){ await sb.from('assignments').update(rec).eq('id',rec.id); } else { await sb.from('assignments').insert(rec); }
-  closeTaskModal(); await reload();
-});
-$('#mDelete').addEventListener('click',async function(){
-  var id=$('#mId').value; if(!id) return;
-  if(!confirm('Deze taak verwijderen?')) return;
-  if(!isAdmin()) { alert('Wachtwoord vereist'); return; }
-  await sb.from('assignments').delete().eq('id',Number(id)); closeTaskModal(); await reload();
-});
-$('#mType').addEventListener('change',function(){ document.getElementById('vehicleRow').style.display = ($('#mType').value==='montage')?'':'none'; });
+  // ✓ undefined → null
+  Object.keys(rec).forEach(k => {
+    if (rec[k] === undefined) rec[k] = null;
+  });
 
+  // ✓ CORRECTE UPDATE / INSERT
+  try {
+    if (!id) {
+      // INSERT — GEEN id meesturen
+      var ins = await sb.from('assignments').insert(rec);
+      if (ins.error) throw ins.error;
+    } else {
+      // UPDATE — id apart meegeven
+      var upd = await sb.from('assignments')
+        .update(rec)
+        .eq('id', id);
+      if (upd.error) throw upd.error;
+    }
+
+    closeTaskModal();
+    await reload();
+
+  } catch (e) {
+    console.error(e);
+    alert('Opslaan mislukt: ' + (e.message || e));
+  }
+});
+
+
+// ---------- Verwijderen ----------
+
+document.getElementById('mDelete').addEventListener('click', async function () {
+  var idVal = (document.getElementById('mId').value || '').trim();
+  if (!idVal) return;
+  if (!confirm('Deze taak verwijderen?')) return;
+  if (!isAdmin()) { alert('Wachtwoord vereist'); return; }
+
+  await sb.from('assignments').delete().eq('id', Number(idVal));
+  closeTaskModal();
+  await reload();
+});
+
+// Type-radio's: voertuig-rij live tonen/verbergen
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('input[name="mType"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      var t = document.querySelector('input[name="mType"]:checked')?.value;
+      var row = document.getElementById('vehicleRow');
+      if (row) row.style.display = (t === 'montage') ? '' : 'none';
+    });
+  });
+});
+
+
+// --- Type radio's ---
+document.querySelectorAll('input[name="mType"]').forEach(r => {
+  r.addEventListener("change", () => {
+    const t = document.querySelector('input[name="mType"]:checked')?.value;
+    const row = document.getElementById("vehicleRow");
+    if (row) row.style.display = (t === "montage") ? "" : "none";
+  });
+});
+
+// Type-radio's: voertuig-rij tonen/verbergen
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('input[name="mType"]').forEach(function(radio){
+    radio.addEventListener('change', function(){
+      var t = document.querySelector('input[name="mType"]:checked')?.value;
+      var row = document.getElementById('vehicleRow');
+      if (row) row.style.display = (t === 'montage') ? '' : 'none';
+    });
+  });
+});
+
+
+// ---------- Admin-wachtwoord controleren ----------
 async function verifyAdminPlanner(pw){
   ADMIN_PW = pw || '';
   if(!pw){ ADMIN_OK = false; render(); return; }
   const { data, error } = await sb.rpc('is_admin', { p_password: pw });
   ADMIN_OK = !error && !!data;
-  // Optionele visuele hint:
   const fld = document.getElementById('adminPwd');
   if(fld){ fld.style.borderColor = ADMIN_OK ? '#33c36f' : ''; }
   render();
 }
 
-
 // ---------- Wire ----------
 function wire(){
-  // Keep end date in sync with start date (user can still change it afterwards)
+  // einddatum volgt standaard startdatum
   (function(){
     const sd = document.getElementById('mStartDate');
     const ed = document.getElementById('mEndDate');
     if (sd && ed) {
       sd.addEventListener('change', function(){
         if (sd.value) {
-          ed.value = sd.value; // default end = start; still editable
+          ed.value = sd.value;
         }
       });
     }
   })();
 
-  // Date picker helpers (force-open native picker if supported)
   document.getElementById('pickStart')?.addEventListener('click', function(){
     const inp = document.getElementById('mStartDate');
     if (inp && typeof inp.showPicker === 'function') { try { inp.showPicker(); } catch(_) { inp.focus(); } } else { inp?.focus(); }
@@ -538,18 +939,15 @@ function wire(){
   $('#nextWeek').addEventListener('click',function(){currentMonday=addDays(currentMonday,7); render();});
   $('#todayBtn').addEventListener('click',function(){currentMonday=startOfWeek(new Date()); render();});
 
-  
-  
-
-
-  // Export
-document.getElementById('adminPwd').addEventListener('input', (e)=>{
-  const pw = e.target.value;
-  // klein debouncetje
-  clearTimeout(window.__admT);
-  window.__admT = setTimeout(()=> verifyAdminPlanner(pw), 250);
-});
-
+  document.getElementById('adminPwd').addEventListener('input', (e)=>{
+    const pw = e.target.value;
+    clearTimeout(window.__admT);
+    window.__admT = setTimeout(()=> verifyAdminPlanner(pw), 250);
+  });
 }
 
-document.addEventListener('DOMContentLoaded',async function(){ wire(); await reload(); });
+// Initialisatie
+document.addEventListener('DOMContentLoaded',async function(){
+  wire();
+  await reload();
+});
