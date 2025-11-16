@@ -1,6 +1,30 @@
 <!doctype html>
 <html lang="nl">
-<head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+
+<script>
+  // --------------------------
+  // Vul deze met jouw gegevens
+  // --------------------------
+  const SUPABASE_URL = "https://qejxwoxaurbwllihnvim.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0";
+
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function checkLogin() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    // Niet ingelogd → terug naar login.html
+    if (!session) {
+      window.location.href = "login.html";
+    }
+  }
+
+  // Check session meteen bij het openen van index.html
+  checkLogin();
+</script>
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LOVD Weekplanner</title>
@@ -13,17 +37,20 @@
     <div class="logo">LOVD</div>
     <div class="title">Weekplanner</div>
   </div>
+
   <div class="week-nav">
     <button id="prevWeek" class="btn">← Vorige</button>
     <div id="weekLabel" class="week-label"></div>
     <button id="nextWeek" class="btn">Volgende →</button>
     <button id="todayBtn" class="btn ghost">Vandaag</button>
   </div>
+
   <div class="actions">
     <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
     <a class="btn" href="admin.html">Beheer</a>
     <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
     <button id="exportBtn" class="btn ghost">⬇️ Export</button>
+    <button id="logoutBtn">Uitloggen</button>
   </div>
 </header>
 
@@ -71,13 +98,12 @@
      ======================= -->
 <div id="taskModal" class="modal-backdrop" hidden>
   <div class="modal">
-    <div class="modal-header">
+    <header class="modal-header">
       <span id="taskTitle">Taak toevoegen</span>
-      <button id="modalClose">×</button>
-    </div>
+      <button id="modalClose" type="button" class="icon-btn">×</button>
+    </header>
 
     <div class="modal-body">
-
       <!-- Medewerker -->
       <label class="lbl">Medewerker</label>
       <select id="mEmp"></select>
@@ -85,64 +111,62 @@
       <!-- Project -->
       <label class="lbl">Project</label>
       <div class="row">
-        <input id="mProjSearch" placeholder="Zoek project…">
-        <button id="mProjAdd" class="small-btn">+ Nieuw</button>
+        <input id="mProjSearch" placeholder="Zoek project…" />
+        <button id="mProjAdd" class="small-btn" type="button">+ Nieuw</button>
       </div>
       <select id="mProj"></select>
 
       <!-- Datums -->
       <label class="lbl">Datum</label>
       <div class="row">
-        <input type="date" id="mStartDate">
-        <input type="date" id="mEndDate">
+        <input type="date" id="mStartDate" />
+        <input type="date" id="mEndDate" />
       </div>
 
       <!-- Dagdeel -->
       <label class="lbl">Dagdeel</label>
       <div class="radio-group">
-        <label><input type="radio" name="mBlock" value="am"> Ochtend</label>
-        <label><input type="radio" name="mBlock" value="pm"> Middag</label>
-        <label><input type="radio" name="mBlock" value="full"> Hele dag</label>
+        <label><input type="radio" name="mBlock" value="am" /> Ochtend</label>
+        <label><input type="radio" name="mBlock" value="pm" /> Middag</label>
+        <label><input type="radio" name="mBlock" value="full" /> Hele dag</label>
       </div>
 
       <!-- Type taak -->
       <label class="lbl">Type</label>
       <div class="radio-group">
-        <label><input type="radio" name="mType" value="productie"> Productie</label>
-        <label><input type="radio" name="mType" value="montage"> Montage</label>
-        <label><input type="radio" name="mType" value="vrij"> Vrij</label>
+        <label><input type="radio" name="mType" value="productie" /> Productie</label>
+        <label><input type="radio" name="mType" value="montage" /> Montage</label>
+        <label><input type="radio" name="mType" value="vrij" /> Vrij</label>
       </div>
 
       <!-- Voertuig (alleen bij montage) -->
       <div id="vehicleRow">
         <label class="lbl mt">Voertuig (montage)</label>
         <div class="radio-group">
-          <label><input type="radio" name="mVehicle" value="nvt"> Geen</label>
-          <label><input type="radio" name="mVehicle" value="bus"> Bus</label>
-          <label><input type="radio" name="mVehicle" value="bakwagen"> Bakwagen</label>
+          <label><input type="radio" name="mVehicle" value="nvt" /> Geen</label>
+          <label><input type="radio" name="mVehicle" value="bus" /> Bus</label>
+          <label><input type="radio" name="mVehicle" value="bakwagen" /> Bakwagen</label>
         </div>
       </div>
 
       <!-- Urgent -->
       <label class="lbl mt">Urgent</label>
-      <label class="chk"><input type="checkbox" id="mUrgent"> Urgente taak</label>
+      <label class="chk"><input type="checkbox" id="mUrgent" /> Urgente taak</label>
 
       <!-- Notitie -->
       <label class="lbl mt">Notitie</label>
       <textarea id="mNotes" placeholder="Optioneel"></textarea>
 
-      <input type="hidden" id="mId">
-
+      <!-- Verborgen id -->
+      <input type="hidden" id="mId" />
     </div>
 
-    <!-- Buttons -->
-    <div class="modal-footer">
-      <button id="mDelete" class="danger">Verwijderen</button>
-      <button id="mSave" class="primary">Opslaan</button>
-    </div>
+    <footer class="modal-footer">
+      <button id="mDelete" class="danger" type="button">Verwijderen</button>
+      <button id="mSave" class="primary" type="button">Opslaan</button>
+    </footer>
   </div>
 </div>
-
 
 <script>
   window.__CONF__ = {
@@ -152,71 +176,5 @@
   };
 </script>
 <script src="app.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-  // Sluit via backdrop
-  document.getElementById("taskModal").addEventListener("click", function(e){
-    if (e.target.classList.contains("modal-backdrop")) {
-      closeTaskModal();
-    }
-  });
-
-  // Sluit via X
-  document.getElementById("modalClose").addEventListener("click", function () {
-    closeTaskModal();
-  });
-
-  // Opslaan
-  document.getElementById("mSave").addEventListener("click", async function () {
-    await saveTask();
-  });
-
-  // Verwijderen
-  document.getElementById("mDelete").addEventListener("click", async function () {
-    await deleteTask();
-  });
-
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-
-  // Sluit via backdrop
-  document.addEventListener("click", function (e) {
-    if (e.target.classList.contains("modal-backdrop")) {
-      closeTaskModal();
-    }
-  });
-
-  // Sluit via X
-  const xBtn = document.getElementById("modalClose");
-  if (xBtn) {
-    xBtn.addEventListener("click", function () {
-      closeTaskModal();
-    });
-  }
-
-  // Opslaan
-  const saveBtn = document.getElementById("mSave");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", async function () {
-      await saveTask();
-    });
-  }
-
-  // Verwijderen
-  const delBtn = document.getElementById("mDelete");
-  if (delBtn) {
-    delBtn.addEventListener("click", async function () {
-      await deleteTask();
-    });
-  }
-
-});
-</script>
-
 </body>
 </html>
-

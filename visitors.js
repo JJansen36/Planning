@@ -1,7 +1,17 @@
+document.addEventListener("DOMContentLoaded", async () => {
+  // Alleen ingelogde gebruikers mogen deze pagina zien
+  await requireAuth();
+  setupLogout();
+
+  // HIERNA: jouw bestaande code
+  // bijv. loadVehicles(); loadReservations(); etc.
+});
 // visitors.js — kinds + verify admin
 const { url: SUPABASE_URL, key: SUPABASE_ANON_KEY } = window.__CONF__;
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
 
 const $ = (s)=>document.querySelector(s);
 

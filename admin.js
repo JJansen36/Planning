@@ -1,3 +1,13 @@
+document.addEventListener("DOMContentLoaded", async () => {
+  // Eerst: ingelogd + admin zijn
+  await requireAdmin();
+  setupLogout();
+
+  // HIERNA: jouw bestaande admin-init
+  // bijv. loadEmployees(); loadProjects(); loadAdminSettings(); etc.
+});
+
+
 // admin.js — beheer projecten + medewerkers
 const { url: SUPABASE_URL, key: SUPABASE_ANON_KEY } = window.__CONF__;
 const { createClient } = supabase;
