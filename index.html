@@ -1,35 +1,16 @@
 <!doctype html>
 <html lang="nl">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js"></script>
-
-<script>
-  // --------------------------
-  // Vul deze met jouw gegevens
-  // --------------------------
-  const SUPABASE_URL = "https://qejxwoxaurbwllihnvim.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0";
-
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  async function checkLogin() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-
-    // Niet ingelogd → terug naar login.html
-    if (!session) {
-      window.location.href = "login.html";
-    }
-  }
-
-  // Check session meteen bij het openen van index.html
-  checkLogin();
-</script>
-
+<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LOVD Weekplanner</title>
+
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+  <!-- Supabase + auth + app -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
 </head>
 <body>
 <header class="topbar">
@@ -94,7 +75,7 @@
 </template>
 
 <!-- =======================
-     TAAK MODAL (NIEUWE LAYOUT)
+     TAAK MODAL
      ======================= -->
 <div id="taskModal" class="modal-backdrop" hidden>
   <div class="modal">
@@ -168,13 +149,5 @@
   </div>
 </div>
 
-<script>
-  window.__CONF__ = {
-    url: "https://qejxwoxaurbwllihnvim.supabase.co",
-    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0",
-    admin: "lovd-admin"
-  };
-</script>
-<script src="app.js"></script>
 </body>
 </html>

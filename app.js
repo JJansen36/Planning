@@ -1,20 +1,18 @@
 document.addEventListener("DOMContentLoaded", async () => {
-  // Eerst checken of iemand is ingelogd
+  // Eerst inloggen controleren
   await requireAuth();
 
-  // Logoutknop activeren (als hij in je HTML staat)
+  // Logoutknop (als aanwezig)
   setupLogout();
 
-  // HIERNA: jouw bestaande init-code voor de planner
-  // bijv. initPlanner(); loadAssignments(); etc.
+  // Daarna alles voor de planner
+  wire();
+  await reload();
 });
+
 // ==========================================================
 //  SUPABASE CLIENT
 // ==========================================================
-const { url: "https://qejxwoxaurbwllihnvim.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0" } = window.__CONF__;
-const { createClient } = supabase;
-const sb = createClient("https://qejxwoxaurbwllihnvim.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0");
-
 
 
 let ADMIN_OK = false;
@@ -936,11 +934,3 @@ function wire() {
     });
   });
 }
-
-// ==========================================================
-//  INIT
-// ==========================================================
-document.addEventListener("DOMContentLoaded", async function () {
-  wire();
-  await reload();
-});
