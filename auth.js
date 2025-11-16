@@ -2,7 +2,7 @@
 // ---------------------------------
 // Vul hier jouw Supabase gegevens in
 // ---------------------------------
-const SUPABASE_URL = "https://supabase.com/dashboard/project/qejxwoxaurbwllihnvim/editor/17452";
+const SUPABASE_URL = "https://qejxwoxaurbwllihnvim.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0";
 
 
