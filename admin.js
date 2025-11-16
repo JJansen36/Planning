@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 // admin.js — beheer projecten + medewerkers
-const { url: SUPABASE_URL, key: SUPABASE_ANON_KEY } = window.__CONF__;
+const { url: "https://qejxwoxaurbwllihnvim.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0"} = window.__CONF__;
 const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
