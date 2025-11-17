@@ -17,7 +17,7 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,
 .btn{border:1px solid var(--border);background:#17181b;color:#eaeaea;border-radius:10px;padding:8px 10px;cursor:pointer}
 .btn:hover{background:#1f2024}.btn.ghost{background:transparent}.btn.small{padding:6px 8px;font-size:.9rem}.btn.danger{border-color:#ff5a5f55;color:#ffb3b5}
 
-.layout{display:grid;grid-template-columns:1fr 420px;gap:16px;max-width:100%;margin:12px auto;padding:0 16px}
+.layout{display:grid;grid-template-columns:1fr 420px;gap:16px;max-width:100%;margin:12px auto;padding:16 0px}
 .layout.single{grid-template-columns:1fr}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;height:max-content}
 
@@ -67,6 +67,14 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   border-top:1px solid var(--border);
 }
 
+/* Duidelijkere horizontale lijnen tussen medewerkers */
+.grid .cell {
+    border-bottom: 2px solid #787879; /* iets lichter en duidelijker */
+}
+.grid .emp {
+    border-bottom: 2px solid #787879;
+}
+
 /* =========================================
    Vandaag markeren in de planner
    ========================================= */
@@ -82,7 +90,6 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .vehiclebar .cell.today {
   box-shadow: inset 0 0 0 2px var(--green);  /* zelfde kader in voertuigbalk */
 }
-
 
 
 /* Items in beide helften */
@@ -149,9 +156,23 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 
 @media (max-width:1080px){
   .layout{grid-template-columns:1fr}
-  .grid{grid-template-columns:160px repeat(7,1fr)}
-  .vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; border:1px solid var(--line,#e6e6e6); border-top:none; border-radius:0 0 12px 12px; overflow:hidden }
+
+  /* Kalender en voertuigbalk exact dezelfde kolommen */
+  .grid,
+  .vehiclebar {
+    grid-template-columns:150px repeat(7, minmax(120px, 1fr));
+  }
+
+  .vehiclebar{
+    display:grid;
+    width:100%;
+    border:1px solid var(--line,#e6e6e6);
+    border-top:none;
+    border-radius:0 0 12px 12px;
+    overflow:hidden;
+  }
 }
+
 /* Backdrop */
 .modal-backdrop {
   position: fixed;
