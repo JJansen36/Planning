@@ -18,6 +18,16 @@ function isAdmin() {
 // ==========================================================
 const $ = (s) => document.querySelector(s);
 
+function isoDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// ← nieuw: globale referentie naar "vandaag"
+const TODAY_ISO = isoDateStr(new Date());
+
 function el(t, c, txt) {
   const n = document.createElement(t);
   if (c) n.className = c;
@@ -399,9 +409,13 @@ function hasVehicleClash(rec) {
 function headerRow(grid, monday) {
   grid.appendChild(el("div", "corner", "Medewerker — Week " + getWeekNumber(monday)));
   for (let i = 0; i < 7; i++) {
-    grid.appendChild(el("div", "dow", fmtDate(addDays(monday, i))));
+    const day = addDays(monday, i);
+    const iso = isoDateStr(day);
+    const classes = "dow" + (iso === TODAY_ISO ? " today" : "");
+    grid.appendChild(el("div", classes, fmtDate(day)));
   }
 }
+
 
 function employeeRow(grid, emp, days) {
   grid.appendChild(el("div", "emp", emp.name));
@@ -412,6 +426,10 @@ function employeeRow(grid, emp, days) {
       .getElementById("cellTpl")
       .content.cloneNode(true).firstElementChild;
     const iso = isoDateStr(day);
+      if (iso === TODAY_ISO) {
+    cell.classList.add("today");
+  }
+
 
     const inner = cell.querySelector(".cell-inner");
     const amContainer = cell.querySelector(".items-am") || cell.querySelector(".items");

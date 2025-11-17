@@ -67,6 +67,22 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   border-top:1px solid var(--border);
 }
 
+/* =========================================
+   Vandaag markeren in de planner
+   ========================================= */
+.grid .dow.today {
+  background: #686a71;              /* net iets lichter */
+  box-shadow: inset 0 -2px 0 var(#686a71);
+}
+
+.cell.today {
+  box-shadow: inset 0 0 0 2px var(#686a71);  /* kader om cel van vandaag */
+}
+
+.vehiclebar .cell.today {
+  box-shadow: inset 0 0 0 2px var(--green);  /* zelfde kader in voertuigbalk */
+}
+
 
 
 /* Items in beide helften */
