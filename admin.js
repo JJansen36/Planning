@@ -1,192 +1,385 @@
+// =====================================================
+// admin.js — LOVD Beheer (medewerkers + projecten)
+// =====================================================
+
+
+
+
+// Klein hulpfunctietje
+const $ = (s) => document.querySelector(s);
+
+function esc(str) {
+  return String(str ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+// -----------------------------------------------------
+// INIT
+// -----------------------------------------------------
 document.addEventListener("DOMContentLoaded", async () => {
-  // Eerst: ingelogd + admin zijn
-  await requireAdmin();
-  setupLogout();
+  // 1) Inloggen verplicht
+  const session = await requireAuth();
+  if (!session) return;
 
-  // HIERNA: jouw bestaande admin-init
-  // bijv. loadEmployees(); loadProjects(); loadAdminSettings(); etc.
-});
+  // 2) Logout-knop
+  setupLogout("logoutBtn");
 
+  // 3) Admin-flag uit auth.js
+  IS_ADMIN = window.__IS_ADMIN === true;
 
-// admin.js — beheer projecten + medewerkers
-const { url: "https://qejxwoxaurbwllihnvim.supabase.co", key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0"} = window.__CONF__;
-const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let ADMIN_OK = false;
-let ADMIN_PW = '';
-const $ = (s)=>document.querySelector(s);
-
-// --- admin verify ---
-let _pwT=null;
-document.getElementById('adminPwd')?.addEventListener('input', (e)=>{
-  clearTimeout(_pwT);
-  _pwT = setTimeout(()=> verifyAdmin(e.target.value||''), 200);
-});
-async function verifyAdmin(pw){
-  ADMIN_PW = pw || '';
-  if(!pw){ ADMIN_OK=false; render(); return; }
-  const { data, error } = await sb.rpc('is_admin', { p_password: pw });
-  ADMIN_OK = !error && !!data;
-  const fld = document.getElementById('adminPwd');
-  if (fld) fld.style.borderColor = ADMIN_OK ? '#33c36f' : '';
-  render();
-}
-
-// --- data cache ---
-let cache = { employees: [], projects: [] };
-
-async function fetchAll(){
-  try{
-    const empQ = sb.from('employees')
-      .select('id,name,calendar_order,show_in_calendar')
-      .order('calendar_order', { ascending:true, nullsFirst:false })
-      .order('name', { ascending:true });
-    const projQ = sb.from('projects')
-      .select('id,number,customer,name,section')
-      .order('number', { ascending:true, nullsFirst:true })
-      .order('name', { ascending:true });
-    const [emp, proj] = await Promise.all([empQ, projQ]);
-    if(emp.error) throw emp.error;
-    if(proj.error) throw proj.error;
-    cache = { employees: emp.data||[], projects: proj.data||[] };
-    console.log('Loaded', cache.employees.length, 'employees;', cache.projects.length, 'projects');
-  }catch(err){
-    console.error('fetchAll failed:', err);
-    throw err;
+  const warning = $("#adminWarning");
+  if (!IS_ADMIN && warning) {
+    warning.textContent =
+      "Je bent geen admin. Je kunt de lijsten bekijken, maar niet wijzigen.";
   }
-}
 
-async function reload(){
-  try{ await fetchAll(); render(); }
-  catch(e){ alert('Laden mislukt: '+(e?.message||e)); }
-}
+  // 4) Data laden (ook voor niet-admin → alleen lezen)
+  await Promise.all([loadEmployees(), loadProjects()]);
 
-// --- UI render ---
-function render(){
-  renderProjects();
-  renderEmployees();
-}
+  // 5) Event-handlers koppelen
+  setupEmployeeEvents();
+  setupProjectEvents();
 
-// Projects
-document.getElementById('addProj')?.addEventListener('click', async ()=>{
-  const num  = $('#projNumber').value.trim();
-  const cust = $('#projCustomer').value.trim();
-  const name = $('#projName').value.trim();
-  const sect = $('#projSect').value.trim();
-  if(!name){ alert('Projectnaam is verplicht'); return; }
-  if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); return; }
-  const { error } = await sb.from('projects').insert({ number: num||null, customer: cust||null, name, section: sect||null });
-  if(error){ alert('Toevoegen mislukt: '+error.message+'\n(Heb je de kolom customer al?)'); return; }
-  $('#projNumber').value=''; $('#projCustomer').value=''; $('#projName').value=''; $('#projSect').value='';
-  await reload();
-});
-
-function renderProjects(){
-  const list = $('#projList');
-  const rows = (cache.projects || []).map(p => `
-    <li data-id="${p.id}" class="proj-item" style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-      <input class="p-num"  placeholder="Nr"          value="${p.number||''}"   style="width:90px" />
-      <input class="p-cust" placeholder="Klant"       value="${p.customer||''}" style="width:150px" />
-      <input class="p-name" placeholder="Projectnaam" value="${p.name||''}"     style="flex:1" />
-      <input class="p-sect" placeholder="Sectie"      value="${p.section||''}"  style="width:120px" />
-      <div style="display:flex; gap:6px; margin-left:auto;">
-        <button class="btn small" data-save title="Opslaan">💾</button>
-        <button class="btn small ghost" data-del title="Verwijderen">🗑</button>
-      </div>
-    </li>
-  `).join('');
-  list.innerHTML = rows || '<li>(nog geen projecten)</li>';
-}
-
-// Project list actions: save/delete
-document.getElementById('projList')?.addEventListener('click', async (e)=>{
-  const btn = e.target;
-  if(!(btn instanceof HTMLElement)) return;
-  const li = btn.closest('li'); if(!li) return;
-  const id = Number(li.getAttribute('data-id'));
-  if(btn.hasAttribute('data-save')){
-    if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); return; }
-    const num  = li.querySelector('.p-num')?.value?.trim()  || null;
-    const cust = li.querySelector('.p-cust')?.value?.trim() || null;
-    const name = li.querySelector('.p-name')?.value?.trim() || '';
-    const sect = li.querySelector('.p-sect')?.value?.trim() || null;
-    if(!name){ alert('Projectnaam is verplicht'); return; }
-    const { error } = await sb.from('projects').update({ number:num, customer:cust, name, section:sect }).eq('id', id);
-    if(error){ alert('Opslaan mislukt: '+error.message); return; }
-    await reload();
-  }
-  if(btn.hasAttribute('data-del')){
-    if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); return; }
-    if(!confirm('Project verwijderen?')) return;
-    const { error } = await sb.from('projects').delete().eq('id', id);
-    if(error){ alert('Verwijderen mislukt: '+error.message); return; }
-    await reload();
+  // 6) Admin-only knoppen disablen voor niet-admin
+  if (!IS_ADMIN) {
+    document.querySelectorAll(".admin-only").forEach((el) => {
+      el.disabled = true;
+    });
   }
 });
 
-// Employees
-document.getElementById('addEmp')?.addEventListener('click', async ()=>{
-  const name = $('#empName').value.trim();
-  if(!name) return;
-  if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); return; }
-  const { error } = await sb.rpc('add_employee', { p_password: ADMIN_PW, p_name: name });
-  if(error){ alert(error.message); return; }
-  $('#empName').value='';
-  await reload();
-});
+// =====================================================
+// MEDEWERKERS
+// =====================================================
+async function loadEmployees() {
+  const list = $("#empList");
+  if (!list) return;
 
-function renderEmployees(){
-  const list = cache.employees;
-  const holder = document.getElementById('empList');
-  if(!list || list.length===0){ holder.innerHTML = '<li>(nog geen medewerkers)</li>'; return; }
-  holder.innerHTML = list.map(e=>`
-    <li data-id="${e.id}" class="emp-li">
-      <div class="row two" style="align-items:center">
-        <label style="display:flex;gap:8px;align-items:center">
-          <input type="checkbox" class="emp-vis" ${e.show_in_calendar!==false?'checked':''} />
-          <span>${e.name||''}</span>
-        </label>
-        <div style="display:flex;gap:6px;justify-content:flex-end">
-          <button class="btn small" data-up>↑</button>
-          <button class="btn small" data-down>↓</button>
+  list.innerHTML = "<li>(laden...)</li>";
+
+  const { data, error } = await sb
+    .from("employees")
+    .select("id, name, show_in_calendar, calendar_order")
+    .order("calendar_order", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Fout bij laden medewerkers:", error);
+    list.innerHTML = "<li>Fout bij laden medewerkers.</li>";
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = "<li>(Nog geen medewerkers)</li>";
+    return;
+  }
+
+  list.innerHTML = data
+    .map(
+      (e) => `
+      <li class="list-item" data-id="${e.id}">
+        <div class="row">
+          <input class="emp-name" type="text" value="${esc(e.name)}">
+          <label class="chk">
+            <input class="emp-show" type="checkbox" ${
+              e.show_in_calendar !== false ? "checked" : ""
+            }>
+            In kalender
+          </label>
+          <span class="badge small">Volgorde: ${e.calendar_order ?? "-"}</span>
         </div>
-      </div>
-    </li>
-  `).join('');
+        <div class="row mt">
+          <button class="small primary emp-save admin-only">Opslaan</button>
+          <button class="small danger emp-del admin-only">Verwijderen</button>
+        </div>
+      </li>
+    `
+    )
+    .join("");
 }
 
-// visibility + order handlers
-document.getElementById('empList')?.addEventListener('change', async (e)=>{
-  const t = e.target;
-  if(!(t instanceof HTMLInputElement)) return;
-  if(!t.classList.contains('emp-vis')) return;
-  if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); t.checked = !t.checked; return; }
-  const li = t.closest('li'); if(!li) return;
-  const id = Number(li.getAttribute('data-id'));
-  const visible = !!t.checked;
-  const { error } = await sb.rpc('set_employee_visibility', { p_password: ADMIN_PW, p_id: id, p_show: visible });
-  if(error){ alert(error.message); t.checked = !visible; return; }
-  await reload();
-});
+async function addEmployee() {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen medewerkers toevoegen.");
+    return;
+  }
 
-document.getElementById('empList')?.addEventListener('click', async (e)=>{
-  const btn = e.target;
-  if(!(btn instanceof HTMLElement)) return;
-  const li = btn.closest('li'); if(!li) return;
-  if(!btn.hasAttribute('data-up') && !btn.hasAttribute('data-down')) return;
-  if(!ADMIN_OK){ alert('Beheer-wachtwoord vereist'); return; }
+  const nameEl = $("#empName");
+  const showEl = $("#empShow");
+  if (!nameEl || !showEl) return;
 
-  const id = Number(li.getAttribute('data-id'));
-  const list = [...cache.employees]
-    .sort((a,b)=> (a.calendar_order??0)-(b.calendar_order??0) || (a.name||'').localeCompare(b.name||''));
-  const idx = list.findIndex(e => String(e.id)===String(id));
-  const neighbor = list[idx + (btn.hasAttribute('data-down') ? 1 : -1)];
-  if(idx < 0 || !neighbor) return;
+  const name = nameEl.value.trim();
+  const show = !!showEl.checked;
 
-  const { error } = await sb.rpc('swap_employee_order', { p_password: ADMIN_PW, p_id_a: Number(id), p_id_b: Number(neighbor.id) });
-  if(error){ alert(error.message); return; }
-  await reload();
-});
+  if (!name) {
+    alert("Vul een naam in.");
+    return;
+  }
 
-document.addEventListener('DOMContentLoaded', reload);
+  const { error } = await sb
+    .from("employees")
+    .insert({ name, show_in_calendar: show });
+
+  if (error) {
+    console.error("Fout medewerker toevoegen:", error);
+    alert("Fout bij toevoegen medewerker.");
+    return;
+  }
+
+  nameEl.value = "";
+  showEl.checked = true;
+
+  await loadEmployees();
+}
+
+async function saveEmployee(li) {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen medewerkers wijzigen.");
+    return;
+  }
+  if (!li) return;
+
+  const id = Number(li.getAttribute("data-id"));
+  const nameEl = li.querySelector(".emp-name");
+  const showEl = li.querySelector(".emp-show");
+
+  if (!id || !nameEl || !showEl) return;
+
+  const name = nameEl.value.trim();
+  const show = !!showEl.checked;
+
+  if (!name) {
+    alert("Naam mag niet leeg zijn.");
+    return;
+  }
+
+  const { error } = await sb
+    .from("employees")
+    .update({ name, show_in_calendar: show })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Fout medewerker opslaan:", error);
+    alert("Fout bij opslaan medewerker.");
+    return;
+  }
+
+  await loadEmployees();
+}
+
+async function deleteEmployee(id) {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen medewerkers verwijderen.");
+    return;
+  }
+  if (!confirm("Weet je zeker dat je deze medewerker wilt verwijderen?")) return;
+
+  const { error } = await sb.from("employees").delete().eq("id", id);
+
+  if (error) {
+    console.error("Fout medewerker verwijderen:", error);
+    alert("Fout bij verwijderen medewerker.");
+    return;
+  }
+
+  await loadEmployees();
+}
+
+function setupEmployeeEvents() {
+  const addBtn = $("#addEmpBtn");
+  if (addBtn) addBtn.addEventListener("click", addEmployee);
+
+  const list = $("#empList");
+  if (!list) return;
+
+  list.addEventListener("click", (e) => {
+    const btn = e.target;
+    if (!(btn instanceof HTMLElement)) return;
+    const li = btn.closest("li.list-item");
+    if (!li) return;
+
+    if (btn.classList.contains("emp-save")) {
+      saveEmployee(li);
+    } else if (btn.classList.contains("emp-del")) {
+      const id = Number(li.getAttribute("data-id"));
+      if (id) deleteEmployee(id);
+    }
+  });
+}
+
+// =====================================================
+// PROJECTEN
+// =====================================================
+async function loadProjects() {
+  const list = $("#projList");
+  if (!list) return;
+
+  list.innerHTML = "<li>(laden...)</li>";
+
+  const { data, error } = await sb
+    .from("projects")
+    .select("id, number, name, customer, section")
+    .order("number", { ascending: true, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Fout bij laden projecten:", error);
+    list.innerHTML = "<li>Fout bij laden projecten.</li>";
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = "<li>(Nog geen projecten)</li>";
+    return;
+  }
+
+  list.innerHTML = data
+    .map(
+      (p) => `
+      <li class="list-item" data-id="${p.id}">
+        <div class="grid2">
+          <label>Nr
+            <input class="proj-number" type="text" value="${esc(p.number)}">
+          </label>
+          <label>Naam
+            <input class="proj-name" type="text" value="${esc(p.name)}">
+          </label>
+        </div>
+        <div class="grid2 mt">
+          <label>Klant
+            <input class="proj-customer" type="text" value="${esc(p.customer)}">
+          </label>
+          <label>Sectie
+            <input class="proj-section" type="text" value="${esc(p.section)}">
+          </label>
+        </div>
+        <div class="row mt">
+          <button class="small primary proj-save admin-only">Opslaan</button>
+          <button class="small danger proj-del admin-only">Verwijderen</button>
+        </div>
+      </li>
+    `
+    )
+    .join("");
+}
+
+async function addProject() {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen projecten toevoegen.");
+    return;
+  }
+
+  const numEl = $("#projNumber");
+  const nameEl = $("#projName");
+  const custEl = $("#projCustomer");
+  const sectEl = $("#projSection");
+  if (!numEl || !nameEl || !custEl || !sectEl) return;
+
+  const number = numEl.value.trim() || null;
+  const name = nameEl.value.trim();
+  const customer = custEl.value.trim() || null;
+  const section = sectEl.value.trim() || null;
+
+  if (!name) {
+    alert("Projectnaam is verplicht.");
+    return;
+  }
+
+  const { error } = await sb
+    .from("projects")
+    .insert({ number, name, customer, section });
+
+  if (error) {
+    console.error("Fout project toevoegen:", error);
+    alert("Fout bij toevoegen project.");
+    return;
+  }
+
+  numEl.value = "";
+  nameEl.value = "";
+  custEl.value = "";
+  sectEl.value = "";
+
+  await loadProjects();
+}
+
+async function saveProject(li) {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen projecten wijzigen.");
+    return;
+  }
+  if (!li) return;
+
+  const id = Number(li.getAttribute("data-id"));
+  if (!id) return;
+
+  const numEl = li.querySelector(".proj-number");
+  const nameEl = li.querySelector(".proj-name");
+  const custEl = li.querySelector(".proj-customer");
+  const sectEl = li.querySelector(".proj-section");
+  if (!numEl || !nameEl || !custEl || !sectEl) return;
+
+  const number = numEl.value.trim() || null;
+  const name = nameEl.value.trim();
+  const customer = custEl.value.trim() || null;
+  const section = sectEl.value.trim() || null;
+
+  if (!name) {
+    alert("Projectnaam is verplicht.");
+    return;
+  }
+
+  const { error } = await sb
+    .from("projects")
+    .update({ number, name, customer, section })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Fout project opslaan:", error);
+    alert("Fout bij opslaan project.");
+    return;
+  }
+
+  await loadProjects();
+}
+
+async function deleteProject(id) {
+  if (!IS_ADMIN) {
+    alert("Alleen admins kunnen projecten verwijderen.");
+    return;
+  }
+  if (!confirm("Weet je zeker dat je dit project wilt verwijderen?")) return;
+
+  const { error } = await sb.from("projects").delete().eq("id", id);
+
+  if (error) {
+    console.error("Fout project verwijderen:", error);
+    alert("Fout bij verwijderen project.");
+    return;
+  }
+
+  await loadProjects();
+}
+
+function setupProjectEvents() {
+  const addBtn = $("#addProjBtn");
+  if (addBtn) addBtn.addEventListener("click", addProject);
+
+  const list = $("#projList");
+  if (!list) return;
+
+  list.addEventListener("click", (e) => {
+    const btn = e.target;
+    if (!(btn instanceof HTMLElement)) return;
+    const li = btn.closest("li.list-item");
+    if (!li) return;
+
+    if (btn.classList.contains("proj-save")) {
+      saveProject(li);
+    } else if (btn.classList.contains("proj-del")) {
+      const id = Number(li.getAttribute("data-id"));
+      if (id) deleteProject(id);
+    }
+  });
+}

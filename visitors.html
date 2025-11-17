@@ -1,104 +1,84 @@
 <!doctype html>
-
 <html lang="nl">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script> 
+    <script>
+    // Supabase config voor ALLE scripts op de pagina
+    window.__CONF__ = {
+      url: "https://qejxwoxaurbwllihnvim.supabase.co",
+      key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0"
+    };
+  </script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LOVD — voertuig reserveren</title>
+  <title>Voertuig reserveren — LOVD</title>
+
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script src="visitors.js"></script>
+
+
 </head>
+
 <body>
 <header class="topbar">
-  <div class="brand"><div class="logo">LOVD</div><div class="title">Voertuig reserveren</div></div>
+  <div class="brand">
+    <div class="logo">LOVD</div>
+    <div class="title">Voertuig reserveren</div>
+  </div>
+
   <div class="actions">
     <a class="btn ghost" href="index.html">← Terug naar planner</a>
-    <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
     <button id="logoutBtn">Uitloggen</button>
   </div>
 </header>
-<main class="layout single">
-  <section class="panel">
-    <h2>Reserveer bus / bakwagen</h2>
-    <div class="card">
-      <div class="row two">
-        <label>Medewerker <select id="rEmp"></select></label>
-        <label>Voertuig
-          <select id="rVeh"><option value="bus">Bus</option><option value="bakwagen">Bakwagen</option></select>
-        </label>
-      </div>
-      <div class="row two">
-        <label>Type
-          <select id="rKind">
-            <option value="private">Privé</option>
-            <option value="project">Project</option>
-          </select>
-        </label>
-        <label>Project
-          <select id="rProj" disabled></select>
-        </label>
-      </div>
-      <div class="row"><label>Datum <input type="date" id="rDate" /></label></div>
-      <div class="row two">
-        <label>Start <input type="time" id="rStart" value="18:00" /></label>
-        <label>Eind <input type="time" id="rEnd" value="23:00" /></label>
-      </div>
-      <label>Opmerking <input id="rNote" placeholder="Optioneel (bijv. privé)" /></label>
-      <button id="rSave" class="btn">Reserveren</button>
-      <p id="rMsg" class="muted"></p>
-    </div>
-    <h3>Aankomende reserveringen</h3>
-    <ul id="rList" class="list"></ul>
-  </section>
-  <div id="resModal" class="modal" hidden>
-    <div class="modal-backdrop"></div>
-    <div class="modal-dialog">
-      <header class="modal-head"><h3>Reservering bewerken</h3><button id="resClose" class="icon-btn">×</button></header>
-      <div class="modal-body">
-        <input type="hidden" id="rId" />
-        <div class="row two">
-          <label>Medewerker <select id="eEmp"></select></label>
-          <label>Voertuig
-            <select id="eVeh"><option value="bus">Bus</option><option value="bakwagen">Bakwagen</option></select>
-          </label>
-        </div>
-        <div class="row two">
-          <label>Type
-            <select id="eKind">
-              <option value="private">Privé</option>
-              <option value="project">Project</option>
-            </select>
-          </label>
-          <label>Project
-            <select id="eProj"></select>
-          </label>
-        </div>
-        <div class="row">
-          <label>Datum <input type="date" id="eDate" /></label>
-        </div>
-        <div class="row two">
-          <label>Start <input type="time" id="eStart" /></label>
-          <label>Eind  <input type="time" id="eEnd" /></label>
-        </div>
-        <label>Opmerking <input id="eNote" /></label>
-      </div>
-      <footer class="modal-foot">
-        <div class="spacer"></div>
-        <button id="eSave" class="btn">Opslaan</button>
-      </footer>
-    </div>
-  </div>
 
+<main class="layout small">
+  <section class="form-card">
+
+    <h2>Nieuwe reservering</h2>
+
+    <label>Medewerker</label>
+    <select id="rEmp"></select>
+
+    <label>Voertuig</label>
+    <select id="rVeh">
+      <option value="bus">Bus</option>
+      <option value="bakwagen">Bakwagen</option>
+    </select>
+
+    <label>Datum</label>
+    <input type="date" id="rDate">
+
+    <label>Tijd</label>
+    <div class="row">
+      <input type="time" id="rStart">
+      <input type="time" id="rEnd">
+    </div>
+
+    <label>Soort reservering</label>
+    <select id="rKind">
+      <option value="project">Project</option>
+      <option value="private">Privé</option>
+    </select>
+
+    <label>Project (alleen bij project)</label>
+    <select id="rProj"></select>
+
+    <label>Notitie</label>
+    <textarea id="rNote"></textarea>
+
+    <button id="rSave" class="primary mt">Opslaan</button>
+    <div id="rMsg" class="msg"></div>
+  </section>
+
+  <section class="list-card">
+    <h2>Reserveringen</h2>
+    <ul id="rList"></ul>
+  </section>
 </main>
-<script>
-  window.__CONF__ = window.__CONF__ || {
-    url: "https://qejxwoxaurbwllihnvim.supabase.co",
-    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0",
-    admin: "lovd-admin"
-  };
-</script>
-<script src="visitors.js"></script>
+
+
 </body>
 </html>

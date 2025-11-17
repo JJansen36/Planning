@@ -3,54 +3,78 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LOVD — Beheer</title>
+  <title>Beheer — LOVD</title>
+
   <link rel="stylesheet" href="styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
+  <!-- Supabase + auth (dezelfde als bij inlog / visitors) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+  <script src="admin.js"></script>
 </head>
 <body>
+  <body class="admin-page"></body>
 <header class="topbar">
-  <div class="brand"><div class="logo">LOVD</div><div class="title">Beheer</div></div>
+  <div class="brand">
+    <div class="logo">LOVD</div>
+    <div class="title">Beheer</div>
+  </div>
   <div class="actions">
-    <a class="btn ghost" href="index.html">← Terug naar planner</a>
-    <input id="adminPwd" placeholder="beheer-wachtwoord" type="password" class="pwd" />
-    <button id="logoutBtn">Uitloggen</button>
+    <a href="index.html" class="btn ghost">← Terug naar planner</a>
+    <button id="logoutBtn" class="btn">Uitloggen</button>
   </div>
 </header>
 
-<main class="layout single">
-  <section class="panel">
-    <h2>Projecten</h2>
-    <div class="card">
-      <div class="row two">
-        <input id="projNumber" placeholder="Nr (bijv. P-25087)" />
-        <input id="projCustomer" placeholder="Klant" />
-      </div>
-      <div class="row two">
-        <input id="projName" placeholder="Projectnaam" />
-        <input id="projSect" placeholder="Sectie" />
-      </div>
-      <button id="addProj" class="btn small" style="margin-top:6px">+ Voeg toe</button>
-      <ul id="projList" class="list small" style="margin-top:10px"></ul>
+<main class="layout small" id="adminRoot">
+  <section class="form-card">
+    <h2>Beheer</h2>
+    <p>Beheer hier medewerkers en projecten. Alleen admins kunnen wijzigen.</p>
+    <div id="adminWarning" class="msg"></div>
+
+    <hr>
+
+    <!-- MEDEWERKERS -->
+    <h3>Medewerkers</h3>
+
+    <div class="row">
+      <input id="empName" type="text" placeholder="Naam nieuwe medewerker">
+      <label class="chk">
+        <input id="empShow" type="checkbox" checked> In kalender tonen
+      </label>
+      <button id="addEmpBtn" class="primary admin-only">Toevoegen</button>
     </div>
 
-    <h2>Medewerkers</h2>
-    <div class="card">
-      <div class="row two">
-        <input id="empName" placeholder="Naam medewerker" />
-        <button id="addEmp" class="btn small">+ Voeg toe</button>
-      </div>
-      <ul id="empList" class="list"></ul>
+    <ul id="empList" class="list"></ul>
+
+    <hr>
+
+    <!-- PROJECTEN -->
+    <h3>Projecten</h3>
+
+    <div class="grid2">
+      <label>Projectnummer
+        <input id="projNumber" type="text" placeholder="Bijv. 2401">
+      </label>
+      <label>Projectnaam
+        <input id="projName" type="text" placeholder="Naam project">
+      </label>
     </div>
+
+    <div class="grid2">
+      <label>Klant
+        <input id="projCustomer" type="text" placeholder="Klantnaam">
+      </label>
+      <label>Sectie
+        <input id="projSection" type="text" placeholder="Bijv. Keuken">
+      </label>
+    </div>
+
+    <button id="addProjBtn" class="primary mt admin-only">Project toevoegen</button>
+
+    <ul id="projList" class="list"></ul>
   </section>
 </main>
 
-<script>
-  window.__CONF__ = window.__CONF__ || {
-    url: "https://qejxwoxaurbwllihnvim.supabase.co",
-    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0",
-    admin: "lovd-admin"
-  };
-</script>
-<script src="admin.js"></script>
+
 </body>
 </html>

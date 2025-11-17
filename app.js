@@ -1,22 +1,17 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  // Eerst inloggen controleren
-  await requireAuth();
-
-  // Logoutknop (als aanwezig)
-  setupLogout();
-
-  // Daarna alles voor de planner
-  wire();
-  await reload();
-});
 
 // ==========================================================
 //  SUPABASE CLIENT
 // ==========================================================
 
-
+// deze twee mag je laten staan als je wilt, maar ze worden niet meer gebruikt
 let ADMIN_OK = false;
 let ADMIN_PW = "";
+
+// Gebruik voortaan de admin-vlag uit auth.js
+function isAdmin() {
+  return window.__IS_ADMIN === true;
+}
+
 
 // ==========================================================
 //  KLEINE HELPERS
@@ -140,8 +135,9 @@ let currentMonday = startOfWeek(new Date());
 let cache = { employees: [], projects: [], assignments: [], reservations: [] };
 
 function isAdmin() {
-  return ADMIN_OK;
+  return window.__IS_ADMIN === true;
 }
+
 
 // ==========================================================
 //  PROJECT SELECT + QUICK ADD
@@ -489,10 +485,12 @@ function employeeRow(grid, emp, days) {
     }
 
     // dropzones voor nieuwe taak
-    cell.querySelectorAll(".dropzone").forEach(function (dz) {
+        cell.querySelectorAll(".dropzone").forEach(function (dz) {
       const part = dz.getAttribute("data-part"); // am/pm
       (function (dateStr, partVal, empId) {
         dz.addEventListener("click", function () {
+          if (!isAdmin()) return; // gewone gebruiker: niets doen
+
           const blk = partVal === "pm" ? "pm" : "am";
           const t = timesForBlock(blk);
           openTaskModal(
@@ -509,11 +507,12 @@ function employeeRow(grid, emp, days) {
               notes: null,
               block: blk,
             },
-            { readonly: !isAdmin() }
+            { readonly: false }
           );
         });
       })(iso, part, emp.id);
     });
+
 
     grid.appendChild(cell);
   }
@@ -886,15 +885,7 @@ function wire() {
     render();
   });
 
-  // admin wachtwoord
-  const pwd = document.getElementById("adminPwd");
-  if (pwd) {
-    pwd.addEventListener("input", (e) => {
-      const pw = e.target.value;
-      clearTimeout(window.__admT);
-      window.__admT = setTimeout(() => verifyAdminPlanner(pw), 250);
-    });
-  }
+
 
   // modal backdrop click
   const modalBackdrop = document.getElementById("taskModal");
@@ -934,3 +925,10 @@ function wire() {
     });
   });
 }
+document.addEventListener("DOMContentLoaded", async () => {
+  await requireAuth();
+  setupLogout();
+  wire();
+  await reload();
+});
+

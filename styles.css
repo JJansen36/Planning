@@ -422,3 +422,70 @@ button.danger {
   margin-right: 6px;
   font-size: 16px;
 }
+
+/* =========================================================
+   Compactere layout alleen voor admin-pagina
+   ========================================================= */
+.admin-page .layout.small {
+  max-width: 900px;
+  padding: 12px 16px;
+}
+
+.admin-page .form-card {
+  padding: 14px 16px;
+  gap: 8px;
+}
+
+.admin-page h2 {
+  margin-bottom: 6px;
+}
+
+.admin-page h3 {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+
+.admin-page .row {
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: nowrap;
+}
+
+.admin-page .grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-page .list {
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.admin-page .list-item {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+
+.admin-page .list-item input,
+.admin-page .list-item textarea,
+.admin-page .list-item select {
+  padding: 4px 6px;
+  font-size: 0.9rem;
+}
+
+.admin-page .list-item .row.mt {
+  margin-top: 4px;
+}
+
+.admin-page .btn,
+.admin-page button,
+.admin-page .small {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.admin-page .badge.small {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+}
