@@ -11,7 +11,8 @@
 
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body class="planner-page">
+
 <header class="topbar">
   <div class="brand">
     <div class="logo">LOVD</div>
@@ -83,7 +84,14 @@
     </header>
 
     <div class="modal-body">
-      <!-- Medewerker -->
+      <!-- Meerdere medewerkers -->
+      <label class="lbl">Medewerkers (max 4)</label>
+      <div id="mEmpList" class="checkbox-list"></div>
+      <div id="empLimitMsg" class="msg" style="display:none; color:#f77">
+        Maximaal 4 collega's per taak.
+      </div>
+
+      <!-- (oude) hoofdmedewerker dropdown – blijft voor layout, niet in gebruik -->
       <label class="lbl">Medewerker</label>
       <select id="mEmp"></select>
 

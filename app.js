@@ -1,4 +1,3 @@
-
 // ==========================================================
 //  SUPABASE CLIENT
 // ==========================================================
@@ -12,11 +11,59 @@ function isAdmin() {
   return window.__IS_ADMIN === true;
 }
 
-
 // ==========================================================
 //  KLEINE HELPERS
 // ==========================================================
 const $ = (s) => document.querySelector(s);
+
+// ==========================================================
+//  REALTIME RELOAD (DEBOUNCE)
+// ==========================================================
+let reloadTimer = null;
+function scheduleReload() {
+  if (reloadTimer) clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null;
+    reload();
+  }, 400); // klein beetje vertraging zodat meerdere events worden gebundeld
+}
+
+// ==========================================================
+//  SUPABASE REALTIME SUBSCRIPTIONS
+// ==========================================================
+function setupRealtime() {
+  if (!window.sb || !sb.channel) {
+    console.warn("Supabase client niet gevonden voor realtime.");
+    return;
+  }
+
+  const channel = sb.channel("planner_realtime");
+
+  const tables = [
+    "assignments",
+    "assignment_employees",
+    "vehicle_reservations",
+    // optioneel, als je live medewerkers/projecten wilt zien:
+    "employees",
+    "projects",
+  ];
+
+  tables.forEach((tbl) => {
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: tbl },
+      (payload) => {
+        console.log("Realtime update:", tbl, payload.eventType);
+        scheduleReload();
+      }
+    );
+  });
+
+  channel.subscribe((status) => {
+    console.log("Realtime status:", status);
+  });
+}
+
 
 function isoDateStr(d) {
   const y = d.getFullYear();
@@ -25,7 +72,7 @@ function isoDateStr(d) {
   return `${y}-${m}-${day}`;
 }
 
-// ← nieuw: globale referentie naar "vandaag"
+// globale referentie naar "vandaag"
 const TODAY_ISO = isoDateStr(new Date());
 
 function el(t, c, txt) {
@@ -41,13 +88,6 @@ function fmtDate(d) {
     day: "numeric",
     month: "short",
   });
-}
-
-function isoDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 
 function startOfWeek(date) {
@@ -144,11 +184,6 @@ function blockFromTimes(startHm, endHm) {
 let currentMonday = startOfWeek(new Date());
 let cache = { employees: [], projects: [], assignments: [], reservations: [] };
 
-function isAdmin() {
-  return window.__IS_ADMIN === true;
-}
-
-
 // ==========================================================
 //  PROJECT SELECT + QUICK ADD
 // ==========================================================
@@ -211,18 +246,43 @@ async function fetchAll() {
     .select("*")
     .order("calendar_order", { ascending: true, nullsFirst: false })
     .order("name", { ascending: true });
+
   const projQ = sb.from("projects").select("*").order("number", { ascending: true });
   const asgQ = sb.from("assignments").select("*");
   const resQ = sb.from("vehicle_reservations").select("*");
 
-  const [emp, proj, asg, res] = await Promise.all([empQ, projQ, asgQ, resQ]);
-  if (emp.error || proj.error || asg.error || res.error)
-    throw emp.error || proj.error || asg.error || res.error;
+  // nieuwe query voor koppeltabel
+  const linkQ = sb
+    .from("assignment_employees")
+    .select("assignment_id, employee_id");
+
+  const [emp, proj, asg, res, links] = await Promise.all([
+    empQ,
+    projQ,
+    asgQ,
+    resQ,
+    linkQ,
+  ]);
+
+  if (emp.error || proj.error || asg.error || res.error || links.error) {
+    throw emp.error || proj.error || asg.error || res.error || links.error;
+  }
+
+  // per assignment een .employees-array toevoegen
+  const assignmentsWithEmployees = (asg.data || []).map((a) => {
+    const theseLinks = (links.data || []).filter(
+      (l) => l.assignment_id === a.id
+    );
+    return {
+      ...a,
+      employees: theseLinks.map((l) => l.employee_id), // bijv [3, 7, 12]
+    };
+  });
 
   return {
     employees: emp.data,
     projects: proj.data,
-    assignments: asg.data,
+    assignments: assignmentsWithEmployees,
     reservations: res.data,
   };
 }
@@ -416,7 +476,6 @@ function headerRow(grid, monday) {
   }
 }
 
-
 function employeeRow(grid, emp, days) {
   grid.appendChild(el("div", "emp", emp.name));
 
@@ -426,20 +485,28 @@ function employeeRow(grid, emp, days) {
       .getElementById("cellTpl")
       .content.cloneNode(true).firstElementChild;
     const iso = isoDateStr(day);
-      if (iso === TODAY_ISO) {
-    cell.classList.add("today");
-  }
-
+    if (iso === TODAY_ISO) {
+      cell.classList.add("today");
+    }
 
     const inner = cell.querySelector(".cell-inner");
     const amContainer = cell.querySelector(".items-am") || cell.querySelector(".items");
     const pmContainer = cell.querySelector(".items-pm") || cell.querySelector(".items");
 
     const list = cache.assignments
-      .filter((a) => a.employee_id === emp.id && inRange(iso, a.start_date, a.end_date))
-      .sort((a, b) =>
-        (a.start_date + a.start_time).localeCompare(b.start_date + b.start_time)
-      );
+  .filter((a) => {
+    // alle medewerkers bij deze taak: employees[] of fallback naar employee_id
+    const ids = Array.isArray(a.employees) && a.employees.length
+      ? a.employees
+      : (a.employee_id ? [a.employee_id] : []);
+
+    const isForThisEmp = ids.some((id) => String(id) === String(emp.id));
+    return isForThisEmp && inRange(iso, a.start_date, a.end_date);
+  })
+  .sort((a, b) =>
+    (a.start_date + a.start_time).localeCompare(b.start_date + b.start_time)
+  );
+
 
     for (let k = 0; k < list.length; k++) {
       const a = list[k];
@@ -464,8 +531,26 @@ function employeeRow(grid, emp, days) {
         (proj && proj.section ? " — " + proj.section : "");
 
       const parts = [];
+
+      // namen van alle medewerkers bij deze taak
+      const allEmpIds = Array.isArray(a.employees) && a.employees.length
+        ? a.employees
+        : (a.employee_id ? [a.employee_id] : []);
+
+      const nameParts = allEmpIds
+        .map((id) => {
+          const e = cache.employees.find((x) => String(x.id) === String(id));
+          return e ? e.name : null;
+        })
+        .filter(Boolean);
+
+      if (nameParts.length) {
+        parts.push(nameParts.join(" + ")); // bijv "Mark + Thijs"
+      }
+
       if (a.type === "montage" && a.vehicle && a.vehicle !== "nvt") parts.push(a.vehicle);
       if (a.notes) parts.push(a.notes);
+
       item.querySelector(".meta").textContent = parts.join(" • ");
 
       // klikken om te bewerken
@@ -503,7 +588,7 @@ function employeeRow(grid, emp, days) {
     }
 
     // dropzones voor nieuwe taak
-        cell.querySelectorAll(".dropzone").forEach(function (dz) {
+    cell.querySelectorAll(".dropzone").forEach(function (dz) {
       const part = dz.getAttribute("data-part"); // am/pm
       (function (dateStr, partVal, empId) {
         dz.addEventListener("click", function () {
@@ -514,6 +599,7 @@ function employeeRow(grid, emp, days) {
           openTaskModal(
             {
               employee_id: empId,
+              employees: [empId], // hoofdmedewerker ook in lijst
               project_id: cache.projects[0]?.id || null,
               start_date: dateStr,
               end_date: dateStr,
@@ -530,7 +616,6 @@ function employeeRow(grid, emp, days) {
         });
       })(iso, part, emp.id);
     });
-
 
     grid.appendChild(cell);
   }
@@ -640,6 +725,48 @@ function render() {
 }
 
 // ==========================================================
+//  MULTI-MEDEWERKER CHECKBOXES
+// ==========================================================
+function renderEmployeeCheckboxes(selected = []) {
+  const box = document.getElementById("mEmpList");
+  if (!box) return;
+
+  box.innerHTML = "";
+
+  const visibleEmployees = cache.employees.filter(
+    (e) => e.show_in_calendar !== false
+  );
+
+  visibleEmployees.forEach((e) => {
+    box.innerHTML += `
+      <label>
+        <input type="checkbox" value="${e.id}"
+          ${selected.includes(e.id) ? "checked" : ""}>
+        ${e.name}
+      </label>
+    `;
+  });
+
+  // Max 4 limiet
+  const checks = box.querySelectorAll("input[type='checkbox']");
+  checks.forEach((ch) => {
+    ch.addEventListener("change", () => {
+      const count = [...checks].filter((c) => c.checked).length;
+      const msg = document.getElementById("empLimitMsg");
+      if (count > 4) {
+        ch.checked = false;
+        if (msg) {
+          msg.style.display = "block";
+          setTimeout(() => (msg.style.display = "none"), 2000);
+        } else {
+          alert("Maximaal 4 collega's per taak.");
+        }
+      }
+    });
+  });
+}
+
+// ==========================================================
 //  MODAL OPENEN / SLUITEN
 // ==========================================================
 function openTaskModal(rec, opts) {
@@ -647,15 +774,23 @@ function openTaskModal(rec, opts) {
   opts = opts || {};
   const readonly = !!opts.readonly;
 
-  const empSel = document.getElementById("mEmp");
-  if (empSel) {
-    empSel.innerHTML = (cache.employees || [])
-      .map((e) => `<option value="${e.id}">${e.name}</option>`)
-      .join("");
-  }
-
   const firstEmpId = (cache.employees[0] && cache.employees[0].id) || "";
   const firstProjId = (cache.projects[0] && cache.projects[0].id) || "";
+
+  // medewerkers voor deze taak bepalen
+  let selectedEmployees = [];
+  if (Array.isArray(rec.employees) && rec.employees.length) {
+    selectedEmployees = rec.employees.slice(0, 4); // uit koppeltabel
+  } else if (rec.employee_id) {
+    selectedEmployees = [rec.employee_id]; // oude data / nieuwe taak
+  } else if (firstEmpId) {
+    selectedEmployees = [firstEmpId]; // fallback
+  }
+
+  // checkbox-lijst vullen
+  if (typeof renderEmployeeCheckboxes === "function") {
+    renderEmployeeCheckboxes(selectedEmployees);
+  }
 
   // Projects
   const searchVal = document.getElementById("mProjSearch")?.value || "";
@@ -670,7 +805,6 @@ function openTaskModal(rec, opts) {
   }
 
   setVal("mId", rec.id || "");
-  setVal("mEmp", String(rec.employee_id || firstEmpId));
   setVal("mProj", String(rec.project_id || firstProjId));
   setVal("mStartDate", rec.start_date || "");
   setVal("mEndDate", rec.end_date || rec.start_date || "");
@@ -680,19 +814,26 @@ function openTaskModal(rec, opts) {
   if (urgEl) urgEl.checked = !!rec.urgent;
 
   const typeVal = rec.type || "productie";
-  const typeRadio = document.querySelector(`input[name="mType"][value="${typeVal}"]`);
+  const typeRadio = document.querySelector(
+    `input[name="mType"][value="${typeVal}"]`
+  );
   if (typeRadio) typeRadio.checked = true;
 
   const vehVal = rec.vehicle || "nvt";
-  const vehRadio = document.querySelector(`input[name="mVehicle"][value="${vehVal}"]`);
+  const vehRadio = document.querySelector(
+    `input[name="mVehicle"][value="${vehVal}"]`
+  );
   if (vehRadio) vehRadio.checked = true;
 
   const vehicleRow = document.getElementById("vehicleRow");
-  if (vehicleRow) vehicleRow.style.display = typeVal === "montage" ? "" : "none";
+  if (vehicleRow) vehicleRow.style.display =
+    typeVal === "montage" ? "" : "none";
 
   let blk = rec.block || blockFromTimes(rec.start_time, rec.end_time);
   if (!blk) blk = "am";
-  const blockRadio = document.querySelector(`input[name="mBlock"][value="${blk}"]`);
+  const blockRadio = document.querySelector(
+    `input[name="mBlock"][value="${blk}"]`
+  );
   if (blockRadio) blockRadio.checked = true;
 
   // enable/disable velden
@@ -710,10 +851,19 @@ function openTaskModal(rec, opts) {
   }
 
   // tekst/select
-  ["#mEmp", "#mProj", "#mStartDate", "#mEndDate", "#mNotes"].forEach((sel) => {
+  ["#mProj", "#mStartDate", "#mEndDate", "#mNotes"].forEach((sel) => {
     const inp = document.querySelector(sel);
     if (inp) inp.disabled = readonly;
   });
+
+  // medewerkers-checkboxes readonly maken
+  const empListEl = document.getElementById("mEmpList");
+  if (empListEl) {
+    empListEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.disabled = readonly;
+    });
+  }
+
   // project search / add
   const projSearch = document.getElementById("mProjSearch");
   const projAdd = document.getElementById("mProjAdd");
@@ -722,9 +872,9 @@ function openTaskModal(rec, opts) {
 
   // radios
   ["mType", "mVehicle", "mBlock"].forEach((name) => {
-    document.querySelectorAll(`input[name="${name}"]`).forEach((r) => {
-      r.disabled = readonly;
-    });
+    document
+      .querySelectorAll(`input[name="${name}"]`)
+      .forEach((r) => (r.disabled = readonly));
   });
 
   const modal = document.getElementById("taskModal");
@@ -746,17 +896,35 @@ async function handleSaveClick() {
   }
 
   const idVal = (document.getElementById("mId")?.value || "").trim();
-  const empEl = document.getElementById("mEmp");
   const projEl = document.getElementById("mProj");
   const sdEl = document.getElementById("mStartDate");
   const edEl = document.getElementById("mEndDate");
   const notesEl = document.getElementById("mNotes");
   const urgEl = document.getElementById("mUrgent");
+  const empListEl = document.getElementById("mEmpList");
 
-  if (!empEl || !projEl || !sdEl || !edEl || !notesEl || !urgEl) {
+  if (!empListEl || !projEl || !sdEl || !edEl || !notesEl || !urgEl) {
     alert("Interne fout: modal velden ontbreken.");
     return;
   }
+
+  // geselecteerde medewerkers (checkboxes)
+  const empChecks = empListEl.querySelectorAll('input[type="checkbox"]');
+  const selectedEmployeeIds = [...empChecks]
+    .filter((c) => c.checked)
+    .map((c) => Number(c.value));
+
+  if (!selectedEmployeeIds.length) {
+    alert("Kies minimaal één medewerker voor deze taak.");
+    return;
+  }
+  if (selectedEmployeeIds.length > 4) {
+    alert("Maximaal 4 collega's per taak.");
+    return;
+  }
+
+  // eerste gekozen medewerker is de "hoofd"-medewerker (rij in kalender)
+  const mainEmployeeId = selectedEmployeeIds[0];
 
   const typeRadio = document.querySelector('input[name="mType"]:checked');
   const vehRadio = document.querySelector('input[name="mVehicle"]:checked');
@@ -764,7 +932,7 @@ async function handleSaveClick() {
 
   let rec = {
     id: idVal ? Number(idVal) : null,
-    employee_id: Number(empEl.value) || null,
+    employee_id: mainEmployeeId,
     project_id: Number(projEl.value) || null,
     start_date: sdEl.value || "",
     end_date: edEl.value || sdEl.value || "",
@@ -777,31 +945,21 @@ async function handleSaveClick() {
     end_time: "",
   };
 
+  // dagdeel → tijden
   const blk = (blockRadio && blockRadio.value) || "am";
   const t = timesForBlock(blk);
   rec.start_time = t.start;
   rec.end_time = t.end;
   rec.block = blk;
 
+  // voertuig bij montage
   if (rec.type === "montage") {
     rec.vehicle = (vehRadio && vehRadio.value) || "nvt";
   } else {
     rec.vehicle = "nvt";
   }
 
-  if (!rec.employee_id || !rec.project_id || !rec.start_date) {
-    alert("Vul medewerker, project en startdatum in.");
-    return;
-  }
-  if (rec.end_date < rec.start_date) {
-    alert("Einddatum ligt vóór startdatum.");
-    return;
-  }
-  if (rec.start_time && rec.end_time && rec.end_time <= rec.start_time) {
-    alert("Eindtijd moet na starttijd liggen.");
-    return;
-  }
-
+  // dubbel-boekingscheck voertuig
   if (rec.type === "montage" && rec.vehicle && rec.vehicle !== "nvt") {
     const clash = hasVehicleClash(rec);
     if (clash) {
@@ -818,22 +976,54 @@ async function handleSaveClick() {
     }
   }
 
+  // undefined → null
   Object.keys(rec).forEach((k) => {
     if (rec[k] === undefined) rec[k] = null;
   });
 
+  let assignmentId = rec.id || null;
+
   try {
-    if (!rec.id) {
+    // 1) Taak opslaan in assignments
+    if (!assignmentId) {
       const insertData = { ...rec };
       delete insertData.id;
-      const ins = await sb.from("assignments").insert(insertData);
+      const ins = await sb
+        .from("assignments")
+        .insert(insertData)
+        .select()
+        .single();
       if (ins.error) throw ins.error;
+      assignmentId = ins.data.id;
     } else {
       const patch = { ...rec };
       delete patch.id;
-      const upd = await sb.from("assignments").update(patch).eq("id", rec.id);
+      const upd = await sb
+        .from("assignments")
+        .update(patch)
+        .eq("id", assignmentId);
       if (upd.error) throw upd.error;
     }
+
+    // 2) Koppelingen naar medewerkers in assignment_employees
+    // eerst alles voor deze taak leegmaken
+    const del = await sb
+      .from("assignment_employees")
+      .delete()
+      .eq("assignment_id", assignmentId);
+    if (del.error) throw del.error;
+
+    // daarna opnieuw vullen met de geselecteerde medewerkers
+    const rows = selectedEmployeeIds.map((empId) => ({
+      assignment_id: assignmentId,
+      employee_id: empId,
+    }));
+
+    if (rows.length) {
+      const insLinks = await sb.from("assignment_employees").insert(rows);
+      if (insLinks.error) throw insLinks.error;
+    }
+
     closeTaskModal();
     await reload();
   } catch (e) {
@@ -903,8 +1093,6 @@ function wire() {
     render();
   });
 
-
-
   // modal backdrop click
   const modalBackdrop = document.getElementById("taskModal");
   if (modalBackdrop) {
@@ -943,10 +1131,11 @@ function wire() {
     });
   });
 }
+
 document.addEventListener("DOMContentLoaded", async () => {
   await requireAuth();
   setupLogout();
   wire();
   await reload();
+  setupRealtime(); // 🔔 realtime updates aanzetten
 });
-

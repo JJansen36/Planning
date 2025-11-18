@@ -1,10 +1,33 @@
+@font-face {
+  font-family: "LOVD";
+  src: url("./fonts/lovd.ttf") format("truetype");
+  font-weight: bold;
+  font-style: normal;
+}
 *{box-sizing:border-box}
 :root{
   --bg:#0b0b0c;--panel:#111214;--muted:#9aa0a6;--border:#2a2b2f;--accent-weak:#d1d5db22;
-  --green:#33c36f;--yellow:#f2c744;--red:#ff5a5f;--violet:#a78bfa
-}
+  --green:#33c36f;--yellow:#f2c744;--red:#ff5a5f;--violet:#a78bfa;
+
+
+
+
 html,body{height:100%}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:#ececec}
+
+body{
+  margin:0;
+  font-family:"LOVD", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  color:#ececec;
+}
+
+/* Weeknavigatie + headerknoppen in LOVD-font */
+.week-nav .btn,
+.topbar .btn,
+.topbar button {
+  font-family: "LOVD", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
 
 .topbar{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
 .brand{display:flex;align-items:center;gap:10px}
@@ -35,8 +58,7 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .grid-wrap{margin-bottom:10px}
 
 /* Kalender */
-.grid{display:grid;grid-template-columns: 150px repeat(7, minmax(120px, 1fr));border:1px solid var(--border);border-radius:12px;background:var(--panel);min-width:100%
-}
+.grid{display:grid;grid-template-columns: 150px repeat(7, minmax(120px, 1fr));border:1px solid var(--border);border-radius:12px;background:var(--panel);min-width:100%}
 .grid .corner,.grid .dow{background:#0f1012;border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:12px;font-weight:600;text-align:center}
 .grid .corner{position:sticky;left:0;z-index:3;text-align:left}
 .grid .emp{background:#0f1012;border-right:1px solid var(--border);padding:12px;font-weight:600;position:sticky;left:0;z-index:2}
@@ -64,12 +86,28 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 }
 
 .cell-half + .cell-half{
+  /*border-top:1px solid #f5f5f5;*/
   border-top:1px solid var(--border);
 }
+
+.cell-am{
+  background: #101015;   /* iets donkerder voor ochtend */
+}
+
+.cell-pm{
+  background: #15151b;   /* iets lichter / andere tint voor middag */
+}
+
 
 /* Duidelijkere horizontale lijnen tussen medewerkers */
 .grid .cell {
     border-bottom: 2px solid #787879; /* iets lichter en duidelijker */
+    
+    /* ✔ Dit maakt meerdere taken onder elkaar mogelijk */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 2px 4px;
 }
 .grid .emp {
     border-bottom: 2px solid #787879;
@@ -438,7 +476,7 @@ button.danger {
 /* Full-width calendar and layout */
 .layout, .board, .grid, .vehiclebar { width: 100vw; max-width: none; margin: 0; }
 
-.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr)); width:100%; }
+.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr));min-width:100%}
 
 
 /* --- Task two-line title stacked vertically --- */
@@ -525,4 +563,17 @@ button.danger {
 .admin-page .badge.small {
   font-size: 0.7rem;
   padding: 2px 6px;
+}
+
+.checkbox-list label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.checkbox-list label {
+  display: block;
+  margin-bottom: 4px;
+}
+.checkbox-list input[type="checkbox"] {
+  margin-right: 6px;
 }
