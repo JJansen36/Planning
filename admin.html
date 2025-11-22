@@ -7,13 +7,11 @@
 
   <link rel="stylesheet" href="styles.css" />
 
-  <!-- Supabase + auth (dezelfde als bij inlog / visitors) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
   <script src="admin.js"></script>
 </head>
-<body>
-  <body class="admin-page"></body>
+<body class="admin-page">
 <header class="topbar">
   <div class="brand">
     <div class="logo">LOVD</div>
@@ -28,23 +26,7 @@
 <main class="layout small" id="adminRoot">
   <section class="form-card">
     <h2>Beheer</h2>
-    <p>Beheer hier medewerkers en projecten. Alleen admins kunnen wijzigen.</p>
-    <div id="adminWarning" class="msg"></div>
-
-    <hr>
-
-    <!-- MEDEWERKERS -->
-    <h3>Medewerkers</h3>
-
-    <div class="row">
-      <input id="empName" type="text" placeholder="Naam nieuwe medewerker">
-      <label class="chk">
-        <input id="empShow" type="checkbox" checked> In kalender tonen
-      </label>
-      <button id="addEmpBtn" class="primary admin-only">Toevoegen</button>
-    </div>
-
-    <ul id="empList" class="list"></ul>
+    <p>Beheer hier projecten, secties en medewerkers. Alleen admins kunnen wijzigen.</p>
 
     <hr>
 
@@ -64,17 +46,44 @@
       <label>Klant
         <input id="projCustomer" type="text" placeholder="Klantnaam">
       </label>
-      <label>Sectie
-        <input id="projSection" type="text" placeholder="Bijv. Keuken">
-      </label>
     </div>
 
-    <button id="addProjBtn" class="primary mt admin-only">Project toevoegen</button>
+    <button id="addProjBtn" class="primary admin-only">Project toevoegen</button>
 
-    <ul id="projList" class="list"></ul>
+    <ul id="projectList" class="list"></ul>
+    
+
+    <hr>
+
+<!-- SECTIES -->
+<h3>Secties</h3>
+
+<div id="sectionBox" hidden>
+  <h4 id="sectionHeader"></h4>
+  <ul id="sectionList"></ul>
+  
+  <div class="row">
+    <input id="sectionName" placeholder="Naam sectie">
+    <button id="addSectionBtn" class="btn small primary">Sectie toevoegen</button>
+  </div>
+</div>
+
+<hr>
+
+    <!-- MEDEWERKERS -->
+    <h3>Medewerkers</h3>
+    <div class="row">
+      <input id="empName" type="text" placeholder="Naam nieuwe medewerker">
+      <label class="chk">
+        <input id="empShow" type="checkbox" checked> In kalender tonen
+      </label>
+      <button id="addEmpBtn" class="primary admin-only">Toevoegen</button>
+    </div>
+
+    <ul id="empList" class="list"></ul>
+
   </section>
 </main>
-
 
 </body>
 </html>

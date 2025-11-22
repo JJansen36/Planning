@@ -1,16 +1,15 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script>
-  <script src="app.js"></script>
-
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LOVD Weekplanner</title>
 
   <link rel="stylesheet" href="styles.css" />
 </head>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
 <body class="planner-page">
 
 <header class="topbar">
@@ -28,6 +27,8 @@
 
   <div class="actions">
     <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
+      <a class="btn ghost admin-only-link" href="overview.html">
+    Weekoverzicht 2 maanden</a>
     <a class="btn" href="admin.html">Beheer</a>
     <button id="exportBtn" class="btn ghost">⬇️ Export</button>
     <button id="logoutBtn">Uitloggen</button>
@@ -52,7 +53,7 @@
   <div class="cell">
     <div class="cell-inner">
       <div class="cell-half cell-am">
-        <div class="dropzone" data-part="am"></div>
+        <div class="dropzone" data-date="2025-11-19" data-part="am"></div>
         <div class="items items-am"></div>
       </div>
       <div class="cell-half cell-pm">
@@ -74,49 +75,44 @@
 </template>
 
 <!-- =======================
-     TAAK MODAL
-     ======================= -->
+     TAAK MODAL (GEFIXT)
+======================= -->
 <div id="taskModal" class="modal-backdrop" hidden>
   <div class="modal">
     <header class="modal-header">
-      <span id="taskTitle">Taak toevoegen</span>
+      <span id="taskTitle"></span>
       <button id="modalClose" type="button" class="icon-btn">×</button>
     </header>
 
     <div class="modal-body">
-      <!-- Meerdere medewerkers -->
-      <label class="lbl">Medewerkers (max 4)</label>
-      <div id="mEmpList" class="checkbox-list"></div>
-      <div id="empLimitMsg" class="msg" style="display:none; color:#f77">
-        Maximaal 4 collega's per taak.
-      </div>
 
-      <!-- (oude) hoofdmedewerker dropdown – blijft voor layout, niet in gebruik -->
-      <label class="lbl">Medewerker</label>
-      <select id="mEmp"></select>
-
-      <!-- Project -->
-      <label class="lbl">Project</label>
       <div class="row">
-        <input id="mProjSearch" placeholder="Zoek project…" />
-        <button id="mProjAdd" class="small-btn" type="button">+ Nieuw</button>
-      </div>
-      <select id="mProj"></select>
+  <label class="lbl">Project</label>
+  <div style="display:flex; gap:6px;">
+    <select id="taskProject" style="flex:1;"></select>
+    <button id="toggleProjSearch" class="btn small">🔍</button>
+    <button id="mProjAdd" class="btn small">+ Nieuw</button>
+  </div>
+</div>
 
-      <!-- Datums -->
-      <label class="lbl">Datum</label>
+<div id="projSearchWrap" style="display:none; margin-top:6px;">
+  <input id="mProjSearch" type="text" placeholder="Zoek project…" />
+</div>
+<select id="mProj" style="display:none;"></select>
+
+      <select id="taskSection" disabled></select>
+
+      <!-- MEDERWERKERS -->
+
+      <div id="mEmpList" class="checkbox-list"></div>
+      </div>
+
+      <!-- DATUM -->
       <div class="row">
         <input type="date" id="mStartDate" />
         <input type="date" id="mEndDate" />
       </div>
 
-      <!-- Dagdeel -->
-      <label class="lbl">Dagdeel</label>
-      <div class="radio-group">
-        <label><input type="radio" name="mBlock" value="am" /> Ochtend</label>
-        <label><input type="radio" name="mBlock" value="pm" /> Middag</label>
-        <label><input type="radio" name="mBlock" value="full" /> Hele dag</label>
-      </div>
 
       <!-- Type taak -->
       <label class="lbl">Type</label>
@@ -126,34 +122,46 @@
         <label><input type="radio" name="mType" value="vrij" /> Vrij</label>
       </div>
 
-      <!-- Voertuig (alleen bij montage) -->
-      <div id="vehicleRow">
-        <label class="lbl mt">Voertuig (montage)</label>
-        <div class="radio-group">
-          <label><input type="radio" name="mVehicle" value="nvt" /> Geen</label>
-          <label><input type="radio" name="mVehicle" value="bus" /> Bus</label>
-          <label><input type="radio" name="mVehicle" value="bakwagen" /> Bakwagen</label>
-        </div>
+
+      <!-- Dagdeel -->
+      <label class="lbl">Dagdeel</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mBlock" value="am" /> Ochtend</label>
+        <label><input type="radio" name="mBlock" value="pm" /> Middag</label>
+        <label><input type="radio" name="mBlock" value="full" /> Hele dag</label>
       </div>
 
-      <!-- Urgent -->
-      <label class="lbl mt">Urgent</label>
-      <label class="chk"><input type="checkbox" id="mUrgent" /> Urgente taak</label>
+      <!-- URGENT -->
+      <label class="lbl">
+        <input type="checkbox" id="mUrgent"> Urgent ❗
+      </label>
+      
+      <!-- VOERTUIG -->
+      <div id="vehicleRow">
+        <label class="lbl">Voertuig</label>
+      <div class="radio-group">
+        <label><input type="radio" name="mVehicle" value="nvt" checked> n.v.t.</label>
+        <label><input type="radio" name="mVehicle" value="bus"> Bus</label>
+        <label><input type="radio" name="mVehicle" value="bakwagen"> Bakwagen</label>
+      </div>
 
-      <!-- Notitie -->
-      <label class="lbl mt">Notitie</label>
-      <textarea id="mNotes" placeholder="Optioneel"></textarea>
 
-      <!-- Verborgen id -->
-      <input type="hidden" id="mId" />
+
+      <!-- NOTITIES -->
+      <label class="lbl">Notities</label>
+      <textarea id="mNotes"></textarea>
+
+      <input type="hidden" id="mId">
+
     </div>
 
     <footer class="modal-footer">
-      <button id="mDelete" class="danger" type="button">Verwijderen</button>
-      <button id="mSave" class="primary" type="button">Opslaan</button>
+      <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
+      <button id="mSave" type="button" class="primary-btn">Opslaan</button>
     </footer>
   </div>
 </div>
+
 
 </body>
 </html>

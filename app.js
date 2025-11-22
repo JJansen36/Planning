@@ -5,6 +5,9 @@
 // deze twee mag je laten staan als je wilt, maar ze worden niet meer gebruikt
 let ADMIN_OK = false;
 let ADMIN_PW = "";
+let cache = { employees: [], projects: [], assignments: [], reservations: [] };
+let PROJECTS = [];
+let SECTIONS = [];
 
 // Gebruik voortaan de admin-vlag uit auth.js
 function isAdmin() {
@@ -15,6 +18,299 @@ function isAdmin() {
 //  KLEINE HELPERS
 // ==========================================================
 const $ = (s) => document.querySelector(s);
+
+// Projectsecties laden in modal dropdown
+async function loadSectionOptions(projectId, selectedSectionId = null) {
+  const sel = document.getElementById("taskSection");
+  if (!sel) return;
+
+  sel.innerHTML = `<option value="">-- kies sectie --</option>`;
+  sel.disabled = true;
+
+  if (!projectId) return;
+
+  const { data, error } = await sb
+    .from("project_sections")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("section_name", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data?.length) {
+    sel.innerHTML += data
+      .map(s => `<option value="${s.id}">${s.section_name}</option>`)
+      .join("");
+    sel.disabled = false;
+
+    if (selectedSectionId) {
+      sel.value = selectedSectionId;
+    }
+  }
+}
+
+
+async function loadProjects() {
+  const { data, error } = await sb
+    .from("projects")
+    .select("*, project_sections(*)")
+    .order("number", { ascending: true });
+
+  if (error) return console.error(error);
+
+  PROJECTS = data || [];
+  fillProjectDropdown();
+  // SECTIES LADEN IN MODAL
+async function loadSectionOptions(projectId, preselect = null) {
+  const sel = document.getElementById("taskSection");
+  if (!sel) return;
+
+  sel.innerHTML = `<option value="">-- kies sectie --</option>`;
+  sel.disabled = true;
+
+  if (!projectId) return;
+
+  const { data, error } = await sb
+    .from("project_sections")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("section_name", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  if (data && data.length) {
+    sel.innerHTML += data
+      .map(s => `<option value="${s.id}">${s.section_name}</option>`)
+      .join("");
+
+    sel.disabled = false;
+  }
+
+  if (preselect) sel.value = preselect;
+}
+
+}
+
+function fillProjectDropdown() {
+  const sel = document.getElementById("taskProject");
+  if (!sel) return;
+
+  sel.innerHTML = `<option value="">-- kies project --</option>` +
+    PROJECTS.map(
+      (p) => `<option value="${p.id}">${p.number} — ${p.name}</option>`
+    ).join("");
+
+  document.getElementById("taskSection").disabled = true;
+  document.getElementById("taskSection").innerHTML = `<option>-- kies sectie --</option>`;
+}
+
+
+let draggedAssignment = null;
+
+function setupDragAndDrop() {
+  // items dragbaar maken
+  document.querySelectorAll(".item").forEach(it => {
+    it.draggable = true;
+
+    it.addEventListener("dragstart", (e) => {
+      const id = it.dataset.id;
+      if (!id) return;
+
+      const fromEmpId = Number(it.dataset.empId || 0);
+
+      // originele opdracht + onthouden vanaf welke medewerker gesleept is
+      const base = cache.assignments.find(a => String(a.id) === String(id));
+      if (!base) return;
+
+      draggedAssignment = {
+        ...base,
+        draggedEmployeeId: fromEmpId,   // 🔹 belangrijk voor "vervang"
+      };
+
+      it.classList.add("dragging");
+
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(id));
+      }
+    });
+
+
+  });
+
+  // dropzones voor taken
+  document.querySelectorAll(".dropzone").forEach(dz => {
+    dz.addEventListener("dragover", (e) => {
+      if (!draggedAssignment || !isAdmin()) return;
+      e.preventDefault();
+      dz.classList.add("drop-hover");
+    });
+
+    dz.addEventListener("dragleave", () => {
+      dz.classList.remove("drop-hover");
+    });
+
+    dz.addEventListener("drop", async (e) => {
+    dz.classList.remove("drop-hover");
+    if (!draggedAssignment || !isAdmin()) return;
+
+    const rec = { ...draggedAssignment };
+
+    const newDate = dz.dataset.date;
+    const newBlock = dz.dataset.part;
+    const targetEmpId = Number(dz.dataset.empId);
+    if (!newDate || !newBlock || !targetEmpId) return;
+
+    const t = timesForBlock(newBlock);
+
+    // 👉 huidige medewerkerslijst opbouwen
+    let employees = [];
+    if (Array.isArray(rec.employees) && rec.employees.length) {
+      employees = [...rec.employees];
+    } else if (rec.employee_id) {
+      employees = [Number(rec.employee_id)];
+    }
+
+    // fallback: als er nog niks is, gewoon alleen target
+    // 👇 Toevoegen / vervangen alleen tonen als medewerker verandert
+const draggedId = Number(rec.draggedEmployeeId);
+const isSameEmployee = draggedId === targetEmpId;
+
+    if (!isSameEmployee && rec.employees.length > 1) {
+      const choice = await showAssignChoice();
+      if (!choice) return;
+
+      if (choice === "add") {
+        // ➕ Nieuwe collega erbij
+        if (!rec.employees.includes(targetEmpId)) {
+          rec.employees.push(targetEmpId);
+        }
+      } else if (choice === "replace") {
+        // 🔁 Precies die collega vervangen die je wegsleept
+        const idx = rec.employees.findIndex(e => Number(e) === draggedId);
+        if (idx >= 0) {
+          rec.employees[idx] = targetEmpId;
+        }
+      }
+
+    } else {
+      // zelfde collega → ✨ GEEN popup
+      // dus: alleen datum/dagdeel verplaatsen
+      if (rec.employees.length === 1) {
+        rec.employees = [targetEmpId];
+      }
+    }
+
+
+    // duplicaten eruit
+    employees = [...new Set(employees.map(Number))];
+
+    // 📅 opdracht zelf updaten (datum/blok)
+    let error;
+
+    // SHIFT + drop = kopieer taak
+    if (e.shiftKey) {
+      const copy = {
+        project_id: rec.project_id,
+        section_id: rec.section_id,
+        type: rec.type,
+        start_date: newDate,
+        end_date: newDate,
+        start_time: t.start,
+        end_time: t.end,
+        block: newBlock,
+        notes: rec.notes,
+      };
+
+      const { data: newTask, error: errInsert } = await sb
+        .from("assignments")
+        .insert(copy)
+        .select()
+        .single();
+
+      if (errInsert) {
+        alert("Taak kopiëren mislukt: " + errInsert.message);
+        return;
+      }
+
+      // 🔗 medewerkers van origineel koppelen
+      if (rec.employees?.length) {
+        await sb.from("assignment_employees").insert(
+          rec.employees.map(emp => ({
+            assignment_id: newTask.id,
+            employee_id: emp,
+          }))
+        );
+      }
+
+    } else {
+      // Normale verplaatsing
+      const { error: errUpdate } = await sb.from("assignments")
+        .update({
+          start_date: newDate,
+          end_date: newDate,
+          start_time: t.start,
+          end_time: t.end,
+          block: newBlock,
+        })
+        .eq("id", rec.id);
+
+      if (errUpdate) {
+        alert("Taak verplaatsen mislukt: " + errUpdate.message);
+        return;
+      }
+
+      // 🔄 medewerkers koppeltabel als eerder
+      await sb.from("assignment_employees")
+        .delete()
+        .eq("assignment_id", rec.id);
+
+      await sb.from("assignment_employees").insert(
+        employees.map(emp => ({
+          assignment_id: rec.id,
+          employee_id: emp,
+        }))
+);
+
+    }
+
+    await reload();
+
+
+    if (error) {
+      alert("Taak verplaatsen mislukt: " + error.message);
+      return;
+    }
+
+    // 🔗 koppeltabel opnieuw vullen
+    await sb.from("assignment_employees")
+      .delete()
+      .eq("assignment_id", rec.id);
+
+    await sb.from("assignment_employees").insert(
+      employees.map(empId => ({
+        assignment_id: rec.id,
+        employee_id: empId,
+      }))
+    );
+
+    draggedAssignment = null;
+    await reload();
+  });
+
+
+
+
+  });
+}
+
+
 
 // ==========================================================
 //  REALTIME RELOAD (DEBOUNCE)
@@ -182,7 +478,8 @@ function blockFromTimes(startHm, endHm) {
 //  STATE
 // ==========================================================
 let currentMonday = startOfWeek(new Date());
-let cache = { employees: [], projects: [], assignments: [], reservations: [] };
+
+
 
 // ==========================================================
 //  PROJECT SELECT + QUICK ADD
@@ -202,7 +499,26 @@ function renderProjectOptions(filter, preselectId) {
 
   const sel = document.getElementById("mProj");
   if (sel) sel.innerHTML = opts;
-  if (preselectId != null && sel) sel.value = String(preselectId);
+  if (preselectId != null && sel) sel.value = String(preselectId); 
+     
+      // 🔍 Projectzoek UI
+    $("#toggleProjSearch")?.addEventListener("click", () => {
+      const wrap = $("#projSearchWrap");
+      wrap.style.display = wrap.style.display === "none" ? "block" : "none";
+      $("#mProj").style.display = wrap.style.display;
+    });
+
+    $("#mProjSearch")?.addEventListener("input", () => {
+      renderProjectOptions($("#mProjSearch").value);
+    });
+
+    $("#mProj")?.addEventListener("change", () => {
+      const id = $("#mProj").value;
+      if (!id) return;
+      $("#taskProject").value = id;
+      loadSectionOptions(id);
+    });
+
 }
 
 async function quickAddProjectViaModal() {
@@ -248,7 +564,32 @@ async function fetchAll() {
     .order("name", { ascending: true });
 
   const projQ = sb.from("projects").select("*").order("number", { ascending: true });
-  const asgQ = sb.from("assignments").select("*");
+  const asgQ = sb
+  .from("assignments")
+  .select(`
+    id,
+    start_date,
+    end_date,
+    block,
+    type,
+    urgent,
+    notes,
+    vehicle,
+    project_section_id,
+    assignment_employees ( employee_id ),
+
+    project_sections:assignments_project_section_id_fkey (
+      section_name,
+      project_id,
+      projects (
+        number,
+        name
+      )
+    )
+  `)
+  .order("start_date", { ascending: true })
+  .order("block", { ascending: true });
+
   const resQ = sb.from("vehicle_reservations").select("*");
 
   // nieuwe query voor koppeltabel
@@ -477,7 +818,12 @@ function headerRow(grid, monday) {
 }
 
 function employeeRow(grid, emp, days) {
-  grid.appendChild(el("div", "emp", emp.name));
+  const empCell = el("div", "emp", emp.name);
+
+// speciale CSS class voor LOVD rij
+if (emp.name === "LOVD") empCell.classList.add("emp-LOVD");
+
+grid.appendChild(empCell);
 
   for (let d = 0; d < days.length; d++) {
     const day = days[d];
@@ -510,25 +856,48 @@ function employeeRow(grid, emp, days) {
 
     for (let k = 0; k < list.length; k++) {
       const a = list[k];
-      const proj = cache.projects.find((p) => p.id === a.project_id);
+
       const item = document
         .getElementById("itemTpl")
         .content.cloneNode(true).firstElementChild;
 
-      item.classList.add(a.type || "productie");
-      if (emp && emp.name === "LOVD") item.classList.add("lovd");
-      if (a.urgent) item.classList.add("urgent");
+      item.dataset.id = a.id;
+      item.dataset.empId = emp.id;   // 🔹 deze regel toevoegen
 
-      const top1 = item.querySelector(".top1");
-      let txt1 =
-        (proj && proj.number ? proj.number : "") +
-        (proj && proj.customer ? " — " + proj.customer : "");
-      if (a.urgent) txt1 = "❗ " + txt1;
-      top1.textContent = txt1;
+  
 
-      item.querySelector(".top2").textContent =
-        (proj ? proj.name || "" : "") +
-        (proj && proj.section ? " — " + proj.section : "");
+// 🔹 Kleur op basis van type
+item.classList.add(a.type || "productie");
+
+// 🔹 Project + sectie label opbouwen uit join-data
+const top1 = item.querySelector(".top1");
+let label = "";
+
+if (a.project_sections && a.project_sections.projects) {
+  const sec = a.project_sections;
+  const proj = sec.projects;
+  label = `${proj.number || ""} — ${proj.name} • ${sec.section_name}`;
+}
+
+// 🔹 Urgent vooraan
+if (a.urgent) label = "❗ " + label;
+
+const clash = hasVehicleClash(a);
+if (clash) {
+  item.classList.add("conflict");
+  const cc = document.createElement("span");
+  cc.textContent = "🚚⚠️";
+  cc.title = "Voertuigconflict op " + clash.date;
+  cc.style.marginRight = "4px";
+  top1.prepend(cc);
+}
+
+
+// Invullen
+top1.textContent = label;
+item.querySelector(".top2").textContent = "";
+
+
 
       const parts = [];
 
@@ -565,15 +934,42 @@ function employeeRow(grid, emp, days) {
       if (!isAdmin()) {
         delBtn.style.display = "none";
       } else {
-        (function (id) {
-          delBtn.addEventListener("click", async function (e) {
-            e.stopPropagation();
-            if (!confirm("Taak verwijderen?")) return;
-            await sb.from("assignments").delete().eq("id", id);
+        delBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+
+          const choice = await showDeleteChoice();
+          if (!choice) return; // cancelled
+
+          const empId = Number(item.dataset.empId);
+          const taskId = a.id;
+
+          if (choice === "task") {
+            // 🗑 Complete taak verwijderen
+            await sb.from("assignments").delete().eq("id", taskId);
+            await sb.from("assignment_employees").delete().eq("assignment_id", taskId);
             await reload();
-          });
-        })(a.id);
+            return;
+          }
+
+          if (choice === "employee") {
+            // 👤 Alleen deze medewerker uit de taak
+            const remaining = (a.employees || []).filter(id => id !== empId);
+
+            if (!remaining.length) {
+              // niemand over → taak verwijderen
+              await sb.from("assignments").delete().eq("id", taskId);
+              await sb.from("assignment_employees").delete().eq("assignment_id", taskId);
+            } else {
+              await sb.from("assignment_employees")
+                .delete()
+                .eq("assignment_id", taskId)
+                .eq("employee_id", empId);
+            }
+            await reload();
+          }
+        });
       }
+
 
       // plaats in ochtend/middag/hele dag
       const blk = a.block || blockFromTimes(a.start_time, a.end_time);
@@ -587,37 +983,49 @@ function employeeRow(grid, emp, days) {
       }
     }
 
+
     // dropzones voor nieuwe taak
-    cell.querySelectorAll(".dropzone").forEach(function (dz) {
-      const part = dz.getAttribute("data-part"); // am/pm
-      (function (dateStr, partVal, empId) {
-        dz.addEventListener("click", function () {
-          if (!isAdmin()) return; // gewone gebruiker: niets doen
+cell.querySelectorAll(".dropzone").forEach(function (dz) {
+  const part = dz.getAttribute("data-part"); // am/pm
 
-          const blk = partVal === "pm" ? "pm" : "am";
-          const t = timesForBlock(blk);
-          openTaskModal(
-            {
-              employee_id: empId,
-              employees: [empId], // hoofdmedewerker ook in lijst
-              project_id: cache.projects[0]?.id || null,
-              start_date: dateStr,
-              end_date: dateStr,
-              start_time: t.start,
-              end_time: t.end,
-              type: "productie",
-              vehicle: "nvt",
-              urgent: false,
-              notes: null,
-              block: blk,
-            },
-            { readonly: false }
-          );
-        });
-      })(iso, part, emp.id);
+  // ⬇️ BELANGRIJK: juiste data meegeven voor drag & drop
+  dz.dataset.date = iso;
+  dz.dataset.part = part;
+  dz.dataset.empId = emp.id;
+
+  (function (dateStr, partVal, empId) {
+    dz.addEventListener("click", function () {
+      if (!isAdmin()) return; // gewone gebruiker: niets doen
+
+      const blk = partVal === "pm" ? "pm" : "am";
+      const t = timesForBlock(blk);
+      openTaskModal(
+        {
+          employee_id: empId,
+          employees: [empId], // hoofdmedewerker ook in lijst
+          project_id: cache.projects[0]?.id || null,
+          start_date: dateStr,
+          end_date: dateStr,
+          start_time: t.start,
+          end_time: t.end,
+          type: "productie",
+          vehicle: "nvt",
+          urgent: false,
+          notes: null,
+          block: blk,
+        },
+        { readonly: false }
+      );
     });
+  })(iso, part, emp.id);
+});
 
-    grid.appendChild(cell);
+
+    if (emp.name === "LOVD") {
+  cell.classList.add("emp-LOVD");
+}
+
+grid.appendChild(cell)
   }
 }
 
@@ -704,14 +1112,23 @@ function renderWeek(grid, monday, bar) {
       employeeRow(grid, emp, days);
     }
   }
+// ==========================================================
+// GRID CLICK HANDLERS
+// ==========================================================
+
+
 
   renderVehicleBar(bar, monday);
+ 
+
+  
 }
 
-function render() {
+function renderPlanner() {
   const m1 = currentMonday;
   const m2 = addDays(currentMonday, 7);
-  $("#weekLabel").textContent =
+
+  document.getElementById("weekLabel").textContent =
     "Week " +
     getWeekNumber(m1) +
     " & " +
@@ -720,9 +1137,38 @@ function render() {
     fmtDate(m1) +
     " t/m " +
     fmtDate(addDays(m2, 6));
-  renderWeek($("#gridWeek1"), m1, $("#vehWeek1"));
-  renderWeek($("#gridWeek2"), m2, $("#vehWeek2"));
+
+  renderWeek(document.getElementById("gridWeek1"), m1, document.getElementById("vehWeek1"));
+  renderWeek(document.getElementById("gridWeek2"), m2, document.getElementById("vehWeek2"));
 }
+
+function renderOverview() {
+  const base = currentMonday;
+  const totalWeeks = 8;
+
+  const lastMonday = addDays(base, 7 * (totalWeeks - 1));
+  const lastDay = addDays(lastMonday, 6);
+
+  document.getElementById("weekLabel").textContent =
+    "Week " +
+    getWeekNumber(base) +
+    " t/m " +
+    getWeekNumber(lastMonday) +
+    " — " +
+    fmtDate(base) +
+    " t/m " +
+    fmtDate(lastDay);
+
+  for (let i = 0; i < totalWeeks; i++) {
+    const monday = addDays(base, 7 * i);
+    const g = document.getElementById("gridWeek" + (i + 1));
+    const v = document.getElementById("vehWeek" + (i + 1));
+    if (g && v) renderWeek(g, monday, v);
+  }
+}
+
+
+
 
 // ==========================================================
 //  MULTI-MEDEWERKER CHECKBOXES
@@ -769,46 +1215,108 @@ function renderEmployeeCheckboxes(selected = []) {
 // ==========================================================
 //  MODAL OPENEN / SLUITEN
 // ==========================================================
-function openTaskModal(rec, opts) {
-  rec = rec || {};
-  opts = opts || {};
+async function openTaskModal(rec = {}, opts = {}) {
+  // 🛠️ Veilig project + sectie toewijzen
+if (rec.project_sections && typeof rec.project_sections === "object") {
+  const sec = rec.project_sections;
+}
+  
+  const modal = document.getElementById("taskModal");
+  if (!modal) {
+    console.warn("Modal bestaat niet op deze pagina → geen modal");
+    return;
+  }
+
+  // Datum & dagdeel vanuit cel
+  if (opts.date) {
+    rec.start_date = opts.date;
+    if (!rec.end_date) {
+      rec.end_date = opts.date;
+    }
+  }
+
+  if (opts.block) {
+    rec.block = opts.block;
+  }
+
+// 🛠️ Projectgegevens veilig overnemen uit join
+if (rec.project_sections && typeof rec.project_sections === "object") {
+  const sec = rec.project_sections;
+  if (!rec.project_id && sec.project_id) {
+    rec.project_id = sec.project_id;
+  }
+  if (!rec.project_section_id && sec.id) {
+    rec.project_section_id = sec.id;
+  }
+}
+
+
   const readonly = !!opts.readonly;
 
+  
+
+// 🔹 Correct dropdown veld vullen
+const mProj = document.getElementById("mProj");
+const taskProj = document.getElementById("taskProject");
+const pid = rec.project_id || null;
+
+if (mProj)   mProj.value = pid ?? "";
+if (taskProj) taskProj.value = pid ?? "";
+
+  
   const firstEmpId = (cache.employees[0] && cache.employees[0].id) || "";
   const firstProjId = (cache.projects[0] && cache.projects[0].id) || "";
 
-  // medewerkers voor deze taak bepalen
+  // medewerkers bepalen
   let selectedEmployees = [];
   if (Array.isArray(rec.employees) && rec.employees.length) {
-    selectedEmployees = rec.employees.slice(0, 4); // uit koppeltabel
+    selectedEmployees = rec.employees.slice(0, 4);
   } else if (rec.employee_id) {
-    selectedEmployees = [rec.employee_id]; // oude data / nieuwe taak
+    selectedEmployees = [rec.employee_id];
   } else if (firstEmpId) {
-    selectedEmployees = [firstEmpId]; // fallback
+    selectedEmployees = [firstEmpId];
   }
 
-  // checkbox-lijst vullen
   if (typeof renderEmployeeCheckboxes === "function") {
     renderEmployeeCheckboxes(selectedEmployees);
   }
 
-  // Projects
+  // Project dropdown her-renderen
   const searchVal = document.getElementById("mProjSearch")?.value || "";
   renderProjectOptions(searchVal, rec.project_id);
 
   const edit = !!rec.id;
-  const title = document.getElementById("taskTitle");
-  if (title) {
-    title.textContent = edit
-      ? "Taak" + (readonly ? " (bekijken)" : " bewerken")
-      : "Taak toevoegen";
-  }
+  document.getElementById("taskTitle").textContent =
+    edit ? "Taak bewerken" : "Taak toevoegen";
 
   setVal("mId", rec.id || "");
-  setVal("mProj", String(rec.project_id || firstProjId));
-  setVal("mStartDate", rec.start_date || "");
-  setVal("mEndDate", rec.end_date || rec.start_date || "");
-  setVal("mNotes", rec.notes || "");
+
+  if (edit) {
+    // 🟢 Bestaande taak → data uit record
+    setVal("taskProject", rec.project_id);
+    setVal("mStartDate", rec.start_date || opts.date || "");
+    setVal("mEndDate", rec.end_date || rec.start_date || opts.date || "");
+    setVal("mNotes", rec.notes || "");
+
+  } else {
+     setVal("taskProject", rec.project_id || "");
+     setVal("mStartDate", rec.start_date || opts.date || "");
+     setVal("mEndDate", rec.end_date || rec.start_date || opts.date || "");
+     setVal("mNotes", rec.notes || "");
+
+    if (opts.block) {
+      const radio = document.querySelector(
+        `input[name="mBlock"][value="${opts.block}"]`
+      );
+      if (radio) radio.checked = true;
+    }
+  }
+
+  await loadSectionOptions(rec.project_id, rec.project_section_id || null);
+
+  // Modal tonen
+  document.getElementById("taskModal").hidden = false;
+
 
   const urgEl = document.getElementById("mUrgent");
   if (urgEl) urgEl.checked = !!rec.urgent;
@@ -877,8 +1385,7 @@ function openTaskModal(rec, opts) {
       .forEach((r) => (r.disabled = readonly));
   });
 
-  const modal = document.getElementById("taskModal");
-  if (modal) modal.hidden = false;
+
 }
 
 function closeTaskModal() {
@@ -896,12 +1403,18 @@ async function handleSaveClick() {
   }
 
   const idVal = (document.getElementById("mId")?.value || "").trim();
-  const projEl = document.getElementById("mProj");
+  const projEl = document.getElementById("taskProject");
   const sdEl = document.getElementById("mStartDate");
   const edEl = document.getElementById("mEndDate");
   const notesEl = document.getElementById("mNotes");
   const urgEl = document.getElementById("mUrgent");
   const empListEl = document.getElementById("mEmpList");
+  const project_section_id = Number(document.getElementById("taskSection").value) || null;
+  const updates = {
+  // andere velden blijven zoals ze zijn
+  project_section_id,
+};
+
 
   if (!empListEl || !projEl || !sdEl || !edEl || !notesEl || !urgEl) {
     alert("Interne fout: modal velden ontbreken.");
@@ -933,7 +1446,7 @@ async function handleSaveClick() {
   let rec = {
     id: idVal ? Number(idVal) : null,
     employee_id: mainEmployeeId,
-    project_id: Number(projEl.value) || null,
+    project_section_id: Number(document.getElementById("taskSection").value) || null,
     start_date: sdEl.value || "",
     end_date: edEl.value || sdEl.value || "",
     notes: notesEl.value ? notesEl.value.trim() : null,
@@ -1066,76 +1579,244 @@ async function verifyAdminPlanner(pw) {
 //  WIRE UI
 // ==========================================================
 function wire() {
-  // einddatum volgt standaard startdatum
-  (function () {
-    const sd = document.getElementById("mStartDate");
-    const ed = document.getElementById("mEndDate");
-    if (sd && ed) {
-      sd.addEventListener("change", function () {
-        if (sd.value && !ed.value) {
-          ed.value = sd.value;
-        }
-      });
-    }
-  })();
+  // startdatum -> einddatum kopiëren
+  const sd = document.getElementById("mStartDate");
+  const ed = document.getElementById("mEndDate");
+  if (sd && ed) {
+    sd.addEventListener("change", () => {
+      if (sd.value && !ed.value) ed.value = sd.value;
+    });
+  }
 
-  // weeknavigatie
-  $("#prevWeek")?.addEventListener("click", function () {
+  // Navigatie knoppen
+  const prev = document.getElementById("prevWeek");
+  if (prev) prev.addEventListener("click", () => {
     currentMonday = addDays(currentMonday, -7);
     render();
   });
-  $("#nextWeek")?.addEventListener("click", function () {
+
+  const next = document.getElementById("nextWeek");
+  if (next) next.addEventListener("click", () => {
     currentMonday = addDays(currentMonday, 7);
     render();
   });
-  $("#todayBtn")?.addEventListener("click", function () {
+
+  const today = document.getElementById("todayBtn");
+  if (today) today.addEventListener("click", () => {
     currentMonday = startOfWeek(new Date());
     render();
   });
 
-  // modal backdrop click
+  // Modal klik buiten sluit deze
   const modalBackdrop = document.getElementById("taskModal");
   if (modalBackdrop) {
-    modalBackdrop.addEventListener("click", function (e) {
+    modalBackdrop.addEventListener("click", (e) => {
       if (e.target === modalBackdrop) closeTaskModal();
     });
   }
 
-  // X-knop
-  const xBtn = document.getElementById("modalClose");
-  if (xBtn) xBtn.addEventListener("click", closeTaskModal);
+  // Modal knoppen
+  document.getElementById("modalClose")?.addEventListener("click", closeTaskModal);
+  document.getElementById("mSave")?.addEventListener("click", handleSaveClick);
+  document.getElementById("mDelete")?.addEventListener("click", handleDeleteClick);
 
-  // save / delete
-  const saveBtn = document.getElementById("mSave");
-  if (saveBtn) saveBtn.addEventListener("click", handleSaveClick);
+  // PROJECT → SECTIE dropdown
+  document.getElementById("taskProject")?.addEventListener("change", (e) => {
+    loadSectionOptions(Number(e.target.value));
+  });
 
-  const delBtn = document.getElementById("mDelete");
-  if (delBtn) delBtn.addEventListener("click", handleDeleteClick);
+  // Type -> voertuig tonen
+  document.querySelectorAll('input[name="mType"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      const type = document.querySelector('input[name="mType"]:checked')?.value;
+      const vr = document.getElementById("vehicleRow");
+      if (vr) vr.style.display = type === "montage" ? "" : "none";
+    });
+  });
+    
+}
 
-  // project zoeken / toevoegen
-  const projSearch = document.getElementById("mProjSearch");
-  if (projSearch) {
-    projSearch.addEventListener("input", function (e) {
-      renderProjectOptions(e.target.value, document.getElementById("mProj")?.value);
+
+// ==========================================================
+//  RENDER
+// ==========================================================
+function render() {
+  const isOverview = document.body.classList.contains("overview-page");
+  isOverview ? renderOverview() : renderPlanner();
+
+  setupDragAndDrop(); // ⬅️ nieuw
+}
+
+
+
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const session = await requireAuth();
+  if (!session) return;
+
+  // Admin-only links tonen
+  if (window.__IS_ADMIN === true) {
+    document.querySelectorAll(".admin-only-link").forEach((el) => {
+      el.style.display = "";
     });
   }
-  const projAdd = document.getElementById("mProjAdd");
-  if (projAdd) projAdd.addEventListener("click", quickAddProjectViaModal);
 
-  // type-radio's tonen/verbergen voertuig
-  document.querySelectorAll('input[name="mType"]').forEach((radio) => {
-    radio.addEventListener("change", function () {
-      const t = document.querySelector('input[name="mType"]:checked')?.value;
-      const row = document.getElementById("vehicleRow");
-      if (row) row.style.display = t === "montage" ? "" : "none";
+  // Overzichtspagina alleen voor admins
+  if (document.body.classList.contains("overview-page") && !isAdmin()) {
+    window.location.href = "index.html";
+    return;
+  }
+
+  setupLogout();
+  wire(); // <-- EERST event handlers koppelen
+
+  await loadProjects(); // <-- dan pas projecten ophalen
+
+  // Alleen tonen waar projectList bestaat (admin UI)
+  if (document.getElementById("projectList")) {
+    renderProjectList();
+  }
+
+  await reload(); // <-- nu pas data laden in UI
+
+  setupRealtime(); // <-- realtime bijwerken aanzetten
+});
+
+function renderProjectList() {
+  const list = document.getElementById("projectList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  PROJECTS.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "project-row";
+
+    div.innerHTML = `
+      <strong>${p.number || ""} — ${p.name}</strong>
+      <button class="add-section" data-pid="${p.id}">+ sectie</button>
+      <ul id="sections-${p.id}">
+        ${(p.project_sections || [])
+          .map(s => `<li>${s.section_name}</li>`)
+          .join("")}
+      </ul>
+    `;
+
+    list.appendChild(div);
+  });
+
+  // Hook up buttons
+  document.querySelectorAll(".add-section").forEach(btn => {
+    btn.addEventListener("click", () => {
+      addSection(Number(btn.dataset.pid));
     });
   });
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await requireAuth();
-  setupLogout();
-  wire();
-  await reload();
-  setupRealtime(); // 🔔 realtime updates aanzetten
+async function addSection(projectId) {
+  const name = prompt("Naam van de nieuwe sectie:");
+  if (!name) return;
+
+  const { error } = await sb.from("project_sections").insert({
+    project_id: projectId,
+    section_name: name.trim()
+  });
+
+  if (error) {
+    alert("Sectie opslaan mislukt: " + error.message);
+    return;
+  }
+
+  await loadProjects();
+  renderProjectList();
+}
+
+console.log("Planner script geladen");
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".cell") || e.target.closest(".item")) {
+    console.log("Klik gedetecteerd op planner:", e.target);
+  }
 });
+
+function showAssignChoice() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style = `
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.4);
+      display:grid; place-items:center;
+      z-index:99999;
+    `;
+
+    const box = document.createElement("div");
+    box.style = `
+      background:#222; padding:16px 20px;
+      border-radius:10px; color:#eee;
+      display:flex; gap:12px; flex-direction:column;
+      min-width:220px; text-align:center;
+    `;
+    box.innerHTML = `
+      <div>Taak heeft meerdere medewerkers.<br>Wat wil je doen?</div>
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <button id="addEmp" class="btn small">➕ Toevoegen</button>
+        <button id="replaceEmp" class="btn small danger">🔁 Vervangen</button>
+      </div>
+      <button id="cancelEmp" class="btn ghost small">Annuleren</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    box.querySelector("#addEmp").onclick = () => {
+      document.body.removeChild(overlay);
+      resolve("add");
+    };
+    box.querySelector("#replaceEmp").onclick = () => {
+      document.body.removeChild(overlay);
+      resolve("replace");
+    };
+    box.querySelector("#cancelEmp").onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(null);
+    };
+  });
+}
+
+function showDeleteChoice() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.style = `
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.45);
+      display:grid; place-items:center;
+      z-index:99999;
+    `;
+
+    const box = document.createElement("div");
+    box.style = `
+      background:#222; padding:18px 24px;
+      border-radius:12px; color:#eee;
+      display:flex; gap:16px; flex-direction:column;
+      min-width:250px; text-align:center;
+    `;
+    box.innerHTML = `
+      <div>Wat wil je verwijderen?</div>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button id="delEmp" class="btn small danger">Collega uit taak</button>
+        <button id="delTask" class="btn small danger">Complete taak</button>
+      </div>
+      <button id="cancelDel" class="btn ghost small">Annuleren</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    box.querySelector("#delEmp").onclick = () => { document.body.removeChild(overlay); resolve("employee"); };
+    box.querySelector("#delTask").onclick = () => { document.body.removeChild(overlay); resolve("task"); };
+    box.querySelector("#cancelDel").onclick = () => { document.body.removeChild(overlay); resolve(null); };
+  });
+}
+
+
+

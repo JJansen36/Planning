@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOVD Weekoverzicht (2 maanden)</title>
+
+  <link rel="stylesheet" href="styles.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+  <script src="app.js"></script>
+</head>
+
+<body class="planner-page overview-page">
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">LOVD</div>
+    <div class="title">Weekoverzicht (2 maanden)</div>
+  </div>
+
+  <div class="week-nav">
+    <button id="prevWeek" class="btn">← Vorige</button>
+    <div id="weekLabel" class="week-label"></div>
+    <button id="nextWeek" class="btn">Volgende →</button>
+    <button id="todayBtn" class="btn ghost">Vandaag</button>
+  </div>
+
+  <div class="actions">
+    <a class="btn ghost" href="index.html">← Terug naar planner</a>
+    <button id="logoutBtn" class="btn">Uitloggen</button>
+  </div>
+</header>
+
+<main class="layout single">
+  <section class="board">
+
+    <!-- 8 weken -->
+    <div class="grid-wrap"><div id="gridWeek1" class="grid"></div><div id="vehWeek1" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek2" class="grid"></div><div id="vehWeek2" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek3" class="grid"></div><div id="vehWeek3" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek4" class="grid"></div><div id="vehWeek4" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek5" class="grid"></div><div id="vehWeek5" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek6" class="grid"></div><div id="vehWeek6" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek7" class="grid"></div><div id="vehWeek7" class="vehiclebar"></div></div>
+    <div class="grid-wrap"><div id="gridWeek8" class="grid"></div><div id="vehWeek8" class="vehiclebar"></div></div>
+
+  </section>
+</main>
+
+
+<!-- Kopie van templates uit index.html -->
+
+<template id="cellTpl">
+  <div class="cell">
+    <div class="cell-inner">
+      <div class="cell-half cell-am">
+        <div class="dropzone" data-part="am"></div>
+        <div class="items items-am"></div>
+      </div>
+      <div class="cell-half cell-pm">
+        <div class="dropzone" data-part="pm"></div>
+        <div class="items items-pm"></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="itemTpl">
+  <div class="item">
+    <div class="x">×</div>
+    <div class="top top1"></div>
+    <div class="top top2"></div>
+    <div class="meta"></div>
+  </div>
+</template>
+
+<!-- =======================
+     TAAK MODAL (GEFIXT)
+======================= -->
+<div id="taskModal" class="modal-backdrop" hidden>
+  <div class="modal">
+    <header class="modal-header">
+      <span id="taskTitle"></span>
+      <button id="modalClose" type="button" class="icon-btn">×</button>
+    </header>
+
+    <div class="modal-body">
+
+      <select id="taskProject"></select>
+      <select id="taskSection" disabled></select>
+
+      <!-- SECTIE -->
+      <!--<label class="lbl">Sectie</label>
+      <select id="taskSection" disabled>
+        <option>-- kies sectie --</option>
+      </select> -->
+
+      <!-- MEDERWERKERS -->
+      <label class="lbl">Medewerkers (max 4)</label>
+      <div id="mEmpList" class="checkbox-list"></div>
+      <div id="empLimitMsg" class="msg" style="display:none;color:#f77">
+        Maximaal 4 collega's per taak.
+      </div>
+
+      <!-- DATUM -->
+
+      <div class="row">
+        <input type="date" id="mStartDate" />
+        <input type="date" id="mEndDate" />
+      </div>
+
+      <!-- TYPE -->
+      <label class="lbl">Soort werk</label>
+      <div>
+        <label><input type="radio" name="mType" value="productie" checked> Productie</label>
+        <label><input type="radio" name="mType" value="montage"> Montage</label>
+      </div>
+
+      <!-- DAGDEEL -->
+      <label class="lbl">Dagdeel</label>
+      <div>
+        <label><input type="radio" name="mBlock" value="am" checked> Ochtend</label>
+        <label><input type="radio" name="mBlock" value="pm"> Middag</label>
+        <label><input type="radio" name="mBlock" value="full"> Hele dag</label>
+      </div>
+
+      <!-- VOERTUIG -->
+      <div id="vehicleRow">
+        <label class="lbl">Voertuig</label>
+        <label><input type="radio" name="mVehicle" value="nvt" checked> n.v.t.</label>
+        <label><input type="radio" name="mVehicle" value="bus"> Bus</label>
+        <label><input type="radio" name="mVehicle" value="bakwagen"> Bakwagen</label>
+      </div>
+
+      <!-- URGENT -->
+      <label class="lbl">
+        <input type="checkbox" id="mUrgent"> Urgent ❗
+      </label>
+
+      <!-- NOTITIES -->
+      <label class="lbl">Notities</label>
+      <textarea id="mNotes"></textarea>
+
+      <input type="hidden" id="mId">
+
+    </div>
+
+    <footer class="modal-footer">
+      <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
+      <button id="mSave" type="button" class="primary-btn">Opslaan</button>
+    </footer>
+  </div>
+</div>
+
+</body>
+</html>

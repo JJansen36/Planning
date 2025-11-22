@@ -140,6 +140,16 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   padding:6px 8px 8px 8px;
 }
 
+.item.conflict {
+  outline: 3px solid #ff3b30;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes pulse {
+  0% { outline-color: #ff3b30; }
+  100% { outline-color: #ff7b7b; }
+}
+
 /* Dropzone per helft (alleen over die helft) */
 .cell .dropzone{
   position:absolute;
@@ -159,7 +169,12 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .item.montage{background:rgba(242,199,68,.15);outline:2px solid var(--yellow)}
 .item.vrij{background:rgba(255,90,95,.12);outline:2px solid var(--red)}
 .item .flag{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;background:#ff3b30;color:#fff;font-weight:800}
-.item.full-day{position:absolute;inset:4px 6px;z-index:2;}
+.item.full-day{
+  position: relative;   /* niet meer absoluut */
+  inset: auto;
+  z-index: 1;
+  margin: 4px 8px 2px 8px;  /* mooi uitlijnen met de inhoud van de helften */
+}
 
 /* Voertuig-balk */
 .vehiclebar,
@@ -419,7 +434,7 @@ button.danger {
 
 
 .task .remove {
-  position: relative;
+  position: absolute;
   top: 4px;
   right: 6px;
   background: none;
@@ -458,7 +473,7 @@ button.danger {
 
 
 /* LOVD team notifications row */
-.item.lovd {
+.emp-LOVD .item {
   background: rgba(68,147,255,.15);
   outline: 2px solid #2a7bff;
 }
@@ -577,3 +592,17 @@ button.danger {
 .checkbox-list input[type="checkbox"] {
   margin-right: 6px;
 }
+
+
+.item.dragging {
+  opacity: 0.5;
+}
+
+.dropzone.drop-hover {
+  outline: 2px dashed #1976d2;
+  outline-offset: -5px;
+}
+/* standaard verborgen, JS zet dit weer aan voor admins */
+/*.admin-only-link {
+  display: none;
+}/*
