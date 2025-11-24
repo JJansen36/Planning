@@ -165,9 +165,9 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
 .item .title{font-size:.95rem;font-weight:700;color:#f5f5f5}
 .item .meta{grid-column:1 / -1;font-size:.85rem;color:var(--muted)}
 .item .x{border:none;background:transparent;color:#fff;font-weight:800;cursor:pointer}
-.item.productie{background:rgba(51,195,111,.15);outline:2px solid var(--green)}
-.item.montage{background:rgba(242,199,68,.15);outline:2px solid var(--yellow)}
-.item.vrij{background:rgba(255,90,95,.12);outline:2px solid var(--red)}
+.item.productie{background:rgba(51,195,111,0.15);outline:2px solid var(--green)}
+.item.montage{background:rgba(242,199,68,0.15);outline:2px solid var(--yellow)}
+.item.vrij{background:rgba(255,90,95,0.12);outline:2px solid var(--red)}
 .item .flag{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;background:#ff3b30;color:#fff;font-weight:800}
 .item.full-day{
   position: relative;   /* niet meer absoluut */
@@ -602,7 +602,81 @@ button.danger {
   outline: 2px dashed #1976d2;
   outline-offset: -5px;
 }
-/* standaard verborgen, JS zet dit weer aan voor admins */
-/*.admin-only-link {
-  display: none;
-}/*
+/* ========== ROTATED VIEW ========== */
+
+.rotated-grid {
+    display: grid;
+    grid-auto-rows: auto;
+    grid-template-columns: 150px repeat(var(--emp-count, 5), 1fr);
+    gap: 0;
+    margin: 20px;
+    border: 1px solid #333;
+}
+
+/* Kop */
+.rot-head {
+    background: #222;
+    color: #ddd;
+    padding: 8px;
+    font-weight: 600;
+    border-bottom: 1px solid #444;
+}
+
+/* Daglabel links */
+.rot-daylabel {
+    background: #111;
+    border-bottom: 1px solid #333;
+    border-right: 1px solid #333;
+    padding: 10px;
+    font-weight: 600;
+}
+.rot-daylabel.today {
+    background: #2d2e32;
+}
+.rot-daylabel.weekend {
+    background: #1a1b1d;
+}
+
+/* Weekregel */
+.rot-weekrow {
+    grid-column: 1 / -1;
+    background: #1a1a1d;
+    color: #ccc;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    border-top: 2px solid #e3c547;
+    border-bottom: 1px solid #333;
+}
+
+/* Cel */
+.rot-cell {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid #333;
+    border-right: 1px solid #333;
+    min-height: 70px;
+}
+
+/* AM / PM */
+.rot-am, .rot-pm {
+    flex: 1;
+    padding: 4px;
+}
+.rot-am {
+    border-bottom: 1px dashed #444;
+}
+
+/* Taken */
+.rot-cell .item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin: 2px 0;
+    cursor: pointer;
+}
+.rot-cell .item .x {
+    float: right;
+    cursor: pointer;
+}
+}

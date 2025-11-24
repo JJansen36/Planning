@@ -157,152 +157,144 @@ function setupDragAndDrop() {
     });
 
     dz.addEventListener("drop", async (e) => {
-    dz.classList.remove("drop-hover");
-    if (!draggedAssignment || !isAdmin()) return;
+  e.preventDefault();
+  dz.classList.remove("drop-hover");
+  if (!draggedAssignment || !isAdmin()) return;
 
-    const rec = { ...draggedAssignment };
+  const rec = { ...draggedAssignment };
 
-    const newDate = dz.dataset.date;
-    const newBlock = dz.dataset.part;
-    const targetEmpId = Number(dz.dataset.empId);
-    if (!newDate || !newBlock || !targetEmpId) return;
+  const newDate = dz.dataset.date;
+  const newBlock = dz.dataset.part;
+  const targetEmpId = Number(dz.dataset.empId);
+  if (!newDate || !newBlock || !targetEmpId) return;
 
-    const t = timesForBlock(newBlock);
+  const t = timesForBlock(newBlock);
 
-    // 👉 huidige medewerkerslijst opbouwen
-    let employees = [];
-    if (Array.isArray(rec.employees) && rec.employees.length) {
-      employees = [...rec.employees];
-    } else if (rec.employee_id) {
-      employees = [Number(rec.employee_id)];
+  // -------------------------------
+  // 1) Medewerkerslijst opbouwen
+  // -------------------------------
+  let employees = [];
+
+  if (Array.isArray(rec.employees) && rec.employees.length) {
+    employees = [...rec.employees];
+  } else if (rec.employee_id) {
+    employees = [Number(rec.employee_id)];
+  }
+
+  // fallback: geen medewerkers → target
+  if (!employees.length) {
+    employees = [targetEmpId];
+  }
+
+  // BELANGRIJK: rec.employees gelijk zetten
+  rec.employees = [...employees];
+
+  // -------------------------------
+  // 2) Moet de popup worden getoond?
+  // -------------------------------
+  const draggedId = Number(rec.draggedEmployeeId);
+  const isSameEmployee = draggedId === targetEmpId;
+
+  if (!isSameEmployee && employees.length >= 1) {
+    const choice = await showAssignChoice();
+    if (!choice) return;
+
+    if (choice === "add") {
+      if (!employees.includes(targetEmpId)) {
+        employees.push(targetEmpId);
+      }
+    } else if (choice === "replace") {
+      const idx = employees.findIndex((eId) => eId === draggedId);
+      if (idx >= 0) {
+        employees[idx] = targetEmpId;
+      }
     }
-
-    // fallback: als er nog niks is, gewoon alleen target
-    // 👇 Toevoegen / vervangen alleen tonen als medewerker verandert
-const draggedId = Number(rec.draggedEmployeeId);
-const isSameEmployee = draggedId === targetEmpId;
-
-    if (!isSameEmployee && rec.employees.length > 1) {
-      const choice = await showAssignChoice();
-      if (!choice) return;
-
-      if (choice === "add") {
-        // ➕ Nieuwe collega erbij
-        if (!rec.employees.includes(targetEmpId)) {
-          rec.employees.push(targetEmpId);
-        }
-      } else if (choice === "replace") {
-        // 🔁 Precies die collega vervangen die je wegsleept
-        const idx = rec.employees.findIndex(e => Number(e) === draggedId);
-        if (idx >= 0) {
-          rec.employees[idx] = targetEmpId;
-        }
-      }
-
-    } else {
-      // zelfde collega → ✨ GEEN popup
-      // dus: alleen datum/dagdeel verplaatsen
-      if (rec.employees.length === 1) {
-        rec.employees = [targetEmpId];
-      }
+  } else {
+    // Zelfde medewerker → geen popup
+    if (employees.length === 1) {
+      employees = [targetEmpId];
     }
+  }
 
+  // dubbele medewerkers eruit
+  employees = [...new Set(employees)];
 
-    // duplicaten eruit
-    employees = [...new Set(employees.map(Number))];
+  // -------------------------------
+  // 3) SHIFT = kopiëren
+  // -------------------------------
+  if (e.shiftKey) {
+    const copy = {
+      project_id: rec.project_id,
+      section_id: rec.project_section_id,
+      type: rec.type,
+      urgent: rec.urgent,
+      notes: rec.notes,
+      vehicle: rec.vehicle,
+      start_date: newDate,
+      end_date: newDate,
+      start_time: t.start,
+      end_time: t.end,
+      block: newBlock,
+    };
 
-    // 📅 opdracht zelf updaten (datum/blok)
-    let error;
+    const { data: newRec, error: errInsert } = await sb
+      .from("assignments")
+      .insert(copy)
+      .select()
+      .single();
 
-    // SHIFT + drop = kopieer taak
-    if (e.shiftKey) {
-      const copy = {
-        project_id: rec.project_id,
-        section_id: rec.section_id,
-        type: rec.type,
-        start_date: newDate,
-        end_date: newDate,
-        start_time: t.start,
-        end_time: t.end,
-        block: newBlock,
-        notes: rec.notes,
-      };
-
-      const { data: newTask, error: errInsert } = await sb
-        .from("assignments")
-        .insert(copy)
-        .select()
-        .single();
-
-      if (errInsert) {
-        alert("Taak kopiëren mislukt: " + errInsert.message);
-        return;
-      }
-
-      // 🔗 medewerkers van origineel koppelen
-      if (rec.employees?.length) {
-        await sb.from("assignment_employees").insert(
-          rec.employees.map(emp => ({
-            assignment_id: newTask.id,
-            employee_id: emp,
-          }))
-        );
-      }
-
-    } else {
-      // Normale verplaatsing
-      const { error: errUpdate } = await sb.from("assignments")
-        .update({
-          start_date: newDate,
-          end_date: newDate,
-          start_time: t.start,
-          end_time: t.end,
-          block: newBlock,
-        })
-        .eq("id", rec.id);
-
-      if (errUpdate) {
-        alert("Taak verplaatsen mislukt: " + errUpdate.message);
-        return;
-      }
-
-      // 🔄 medewerkers koppeltabel als eerder
-      await sb.from("assignment_employees")
-        .delete()
-        .eq("assignment_id", rec.id);
-
-      await sb.from("assignment_employees").insert(
-        employees.map(emp => ({
-          assignment_id: rec.id,
-          employee_id: emp,
-        }))
-);
-
-    }
-
-    await reload();
-
-
-    if (error) {
-      alert("Taak verplaatsen mislukt: " + error.message);
+    if (errInsert) {
+      alert("Kopiëren mislukt: " + errInsert.message);
       return;
     }
 
-    // 🔗 koppeltabel opnieuw vullen
-    await sb.from("assignment_employees")
-      .delete()
-      .eq("assignment_id", rec.id);
-
     await sb.from("assignment_employees").insert(
-      employees.map(empId => ({
-        assignment_id: rec.id,
+      employees.map((empId) => ({
+        assignment_id: newRec.id,
         employee_id: empId,
       }))
     );
 
-    draggedAssignment = null;
     await reload();
-  });
+    return;
+  }
+
+  // -------------------------------
+  // 4) Normale verplaatsing
+  // -------------------------------
+  const { error: errUpdate } = await sb
+    .from("assignments")
+    .update({
+      start_date: newDate,
+      end_date: newDate,
+      start_time: t.start,
+      end_time: t.end,
+      block: newBlock,
+    })
+    .eq("id", rec.id);
+
+  if (errUpdate) {
+    alert("Verplaatsen mislukt: " + errUpdate.message);
+    return;
+  }
+
+  // medewerkers updaten
+  await sb.from("assignment_employees")
+    .delete()
+    .eq("assignment_id", rec.id);
+
+  await sb.from("assignment_employees").insert(
+    employees.map((empId) => ({
+      assignment_id: rec.id,
+      employee_id: empId,
+    }))
+  );
+
+  draggedAssignment = null;
+  await reload();
+});
+
+
 
 
 
@@ -1270,6 +1262,7 @@ if (taskProj) taskProj.value = pid ?? "";
   // medewerkers bepalen
   let selectedEmployees = [];
   if (Array.isArray(rec.employees) && rec.employees.length) {
+    
     selectedEmployees = rec.employees.slice(0, 4);
   } else if (rec.employee_id) {
     selectedEmployees = [rec.employee_id];
@@ -1641,10 +1634,21 @@ function wire() {
 //  RENDER
 // ==========================================================
 function render() {
-  const isOverview = document.body.classList.contains("overview-page");
-  isOverview ? renderOverview() : renderPlanner();
 
-  setupDragAndDrop(); // ⬅️ nieuw
+  // 🚫 Rotated view? → GEEN renderPlanner draaien!
+  if (document.body.classList.contains("rotated-page")) {
+    return; // rotated.js doet de rendering
+  }
+
+  const isOverview = document.body.classList.contains("overview-page");
+
+  if (isOverview) {
+    renderOverview();
+  } else {
+    renderPlanner(); 
+  }
+
+  setupDragAndDrop();
 }
 
 

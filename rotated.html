@@ -1,80 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>LOVD Weekplanner</title>
-
-  <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8">
+    <title>Planning – Rotated View</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="rotated.js" defer></script>
 </head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script>
-  <script src="app.js"></script>
-<body class="planner-page">
+<body>
 
+<body class="rotated-page">
+  
 <header class="topbar">
-  <div class="brand">
-    <div class="logo">LOVD</div>
-    <div class="title">Weekplanner</div>
-  </div>
-
-  <div class="week-nav">
-    <button id="prevWeek" class="btn">← Vorige</button>
-    <div id="weekLabel" class="week-label"></div>
-    <button id="nextWeek" class="btn">Volgende →</button>
-    <button id="todayBtn" class="btn ghost">Vandaag</button>
-  </div>
-
-  <div class="actions">
-    <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
-      <a class="btn ghost admin-only-link" href="overview.html">
-    Weekoverzicht 2 maanden</a>
-    <a class="btn" href="rotated.html">Weergave</a>
-    <a class="btn" href="admin.html">Beheer</a>
-    <button id="exportBtn" class="btn ghost">⬇️ Export</button>
-    <button id="logoutBtn">Uitloggen</button>
-  </div>
+    <h1>Rotated Planning</h1>
+    <a href="index.html" class="btn">Classic weergave</a>
 </header>
 
-<main class="layout">
-  <section class="board">
-    <div class="grid-wrap">
-      <div id="gridWeek1" class="grid"></div>
-      <div id="vehWeek1" class="vehiclebar"></div>
-    </div>
-    <div class="grid-wrap">
-      <div id="gridWeek2" class="grid"></div>
-      <div id="vehWeek2" class="vehiclebar"></div>
-    </div>
-  </section>
-</main>
-
-<!-- Dag-cell: gesplitst in ochtend / middag -->
-<template id="cellTpl">
-  <div class="cell">
-    <div class="cell-inner">
-      <div class="cell-half cell-am">
-        <div class="dropzone" data-date="2025-11-19" data-part="am"></div>
-        <div class="items items-am"></div>
-      </div>
-      <div class="cell-half cell-pm">
-        <div class="dropzone" data-part="pm"></div>
-        <div class="items items-pm"></div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<!-- Taak-item -->
-<template id="itemTpl">
-  <div class="item">
-    <div class="x">×</div>
-    <div class="top top1"></div>
-    <div class="top top2"></div>
-    <div class="meta"></div>
-  </div>
-</template>
-
+<div id="rotGrid" class="rotated-grid"></div>
+  <!-- MODAL (gekopieerd uit index.html) -->
 <!-- =======================
      TAAK MODAL (GEFIXT)
 ======================= -->
@@ -163,6 +108,22 @@
   </div>
 </div>
 
+<!-- CELL TEMPLATE (AM/PM) -->
+<template id="rotCellTpl">
+  <div class="rot-cell">
+      <div class="rot-am dropzone" data-part="am"></div>
+      <div class="rot-pm dropzone" data-part="pm"></div>
+  </div>
+</template>
+
+<!-- ITEM TEMPLATE -->
+<template id="rotItemTpl">
+  <div class="item" draggable="true">
+      <div class="top1"></div>
+      <div class="meta"></div>
+      <div class="x">×</div>
+  </div>
+</template>
 
 </body>
 </html>
