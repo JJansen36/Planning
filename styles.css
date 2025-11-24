@@ -679,4 +679,14 @@ button.danger {
     float: right;
     cursor: pointer;
 }
+.item.lovd {
+    background: rgba(0, 122, 255, .20);
+    outline: 2px solid #0a84ff;
+}
+
+.item.lovd .title,
+.item.lovd .meta {
+    color: #dce9ff;
+}
+
 }

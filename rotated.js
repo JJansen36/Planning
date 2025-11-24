@@ -100,6 +100,12 @@ function renderRotatedPlanner() {
                     it.classList.add("vrij");
                 }
 
+                // LOVD medewerker → blauwe taak
+                if (emp.name?.toLowerCase() === "lovd") {
+                    it.classList.add("lovd");
+                }
+
+
                 it.dataset.id = a.id;
                 it.dataset.empId = emp.id;
                 it.dataset.date = iso;
@@ -112,43 +118,52 @@ function renderRotatedPlanner() {
                 const sec = a.project_sections;
                 
 
+                let label = "";
+
+
+
                 if (proj) {
                     label = `${proj.number || ""} — ${proj.name || ""}`;
                     if (sec?.section_name) label += ` • ${sec.section_name}`;
+                } else {
+                    // fallback → voorkomt label undefined
+                    label = a.title || "(geen project)";
                 }
 
+                // urgent
                 if (a.urgent) label = "❗ " + label;
 
+                // toepassen
                 it.querySelector(".top1").textContent = label;
-                it.querySelector(".meta").textContent = "";
+                                it.querySelector(".meta").textContent = "";
 
-                // taak openen
-                it.onclick = (e) => {
-                    e.stopPropagation();
-                    openTaskModal(a, { readonly: !isAdmin() });
-                };
-                // Delete
-                if (isAdmin()) {
-                    it.querySelector(".x").onclick = async (e) => {
-                        e.stopPropagation();
-                        if (!confirm("Taak verwijderen?")) return;
-                        await sb.from("assignments").delete().eq("id", a.id);
-                        await reload();
-                        renderRotatedPlanner();
+                                // taak openen
+                                it.onclick = (e) => {
+                                    e.stopPropagation();
+                                    openTaskModal(a, { readonly: !isAdmin() });
+                                };
+                                // Delete
+                                if (isAdmin()) {
+                                    it.querySelector(".x").onclick = async (e) => {
+                                        e.stopPropagation();
+                                        if (!confirm("Taak verwijderen?")) return;
+                                        await sb.from("assignments").delete().eq("id", a.id);
+                                        await reload();
+                                        renderRotatedPlanner();
+                                    };
+                                }
+
+                                // Drag events
+                                it.ondragstart = e => {
+                    const fromEmpId = Number(it.dataset.empId || 0);
+
+                    draggedAssignment = {
+                        ...a,
+                        draggedEmployeeId: fromEmpId   // 🔥 ESSENTIEEL VOOR “VERVANG”
                     };
-                }
 
-                // Drag events
-                it.ondragstart = e => {
-    const fromEmpId = Number(it.dataset.empId || 0);
-
-    draggedAssignment = {
-        ...a,
-        draggedEmployeeId: fromEmpId   // 🔥 ESSENTIEEL VOOR “VERVANG”
-    };
-
-    e.dataTransfer.setData("text/plain", a.id);
-};
+                    e.dataTransfer.setData("text/plain", a.id);
+                };
 
 
                 // Dagdeel
@@ -299,21 +314,36 @@ function renderRotatedPlanner() {
 
 
                 zone.onclick = () => {
-                    if (!isAdmin()) return;
-                    const blk = zone.dataset.part;
-                    const t = timesForBlock(blk);
-                    openTaskModal(
-                        {
-                            employees: [zone.dataset.empId],
-                            start_date: zone.dataset.date,
-                            end_date: zone.dataset.date,
-                            start_time: t.start,
-                            end_time: t.end,
-                            block: blk
-                        },
-                        { readonly: false }
-                    );
-                };
+    if (!isAdmin()) return;
+
+    // altijd proberen medewerker te halen op 3 manieren:
+    let empId =
+        Number(zone.dataset.empId) ||
+        Number(zone.closest(".rot-cell")?.dataset.empId) ||
+        null;
+
+    if (!empId) {
+        console.warn("Kon geen medewerker bepalen voor nieuwe taak (rotated)");
+        return;
+    }
+
+    const blk = zone.dataset.part;
+    const t = timesForBlock(blk);
+
+    openTaskModal(
+        {
+            employees: [empId],
+            employee_id: empId,
+            start_date: zone.dataset.date,
+            end_date: zone.dataset.date,
+            block: blk,
+            start_time: t.start,
+            end_time: t.end
+        },
+        { readonly: false }
+    );
+};
+
             });
 
             grid.appendChild(cell);
