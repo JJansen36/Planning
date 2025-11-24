@@ -624,11 +624,18 @@ async function reload() {
   try {
     cache = await fetchAll();
     render();
+
+    // 🟦 Rotated view → direct opnieuw tekenen na reload
+    if (document.body.classList.contains("rotated-page")
+        && typeof renderRotatedPlanner === "function") {
+      renderRotatedPlanner();
+    }
+
   } catch (e) {
     console.error(e);
-    alert("Laden mislukt (controleer Supabase policies/schema)");
   }
 }
+
 
 async function addEmployee(name) {
   if (!isAdmin()) {
@@ -1635,18 +1642,13 @@ function wire() {
 // ==========================================================
 function render() {
 
-  // 🚫 Rotated view? → GEEN renderPlanner draaien!
+  // 🟦 Rotated view? → classic planner NIET uit voeren
   if (document.body.classList.contains("rotated-page")) {
-    return; // rotated.js doet de rendering
+    return; // rotated.js regelt zélf zijn rendering
   }
 
   const isOverview = document.body.classList.contains("overview-page");
-
-  if (isOverview) {
-    renderOverview();
-  } else {
-    renderPlanner(); 
-  }
+  isOverview ? renderOverview() : renderPlanner();
 
   setupDragAndDrop();
 }
@@ -1736,6 +1738,10 @@ async function addSection(projectId) {
 }
 
 console.log("Planner script geladen");
+// 🔄 Rotated view automatisch opnieuw tekenen
+if (document.getElementById("rotGrid") && typeof renderRotatedPlanner === "function") {
+    renderRotatedPlanner();
+}
 
 document.addEventListener("click", (e) => {
   if (e.target.closest(".cell") || e.target.closest(".item")) {
