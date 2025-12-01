@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>LOVD Planner + Service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* Geen header meer → frames vullen 100% */
+    .frame-wrapper {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .left, .right {
+      height: 100%;
+      border: none;
+      overflow: hidden;      /* iframe zelf geen scroll tonen */
+      scrollbar-width: none;
+    }
+
+    .left::-webkit-scrollbar,
+    .right::-webkit-scrollbar {
+      display: none;
+    }
+
+    .left {
+          flex: 1;                     /* pakt alle resterende ruimte */
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+
+    .right {
+    width: 380px;                /* vaste breedte: pas aan wat jij wil */
+    min-width: 380px;
+    max-width: 380px;
+    border-left: 1px solid #333;
+    overflow-y: auto;            /* scroll binnen service */
+
+}
+  </style>
+</head>
+
+<body>
+
+<div class="frame-wrapper">
+  <iframe class="left" src="rotated.html" scrolling="no"></iframe>
+  <iframe class="right" src="service_list.html" scrolling="no"></iframe>
+</div>
+
+</body>
+</html>

@@ -1,246 +1,368 @@
+/* ============================================================
+   LOVD — GLOBAL STYLES (OPGESCHOOND)
+   Identiek uiterlijk, opgeschoond & conflictvrij
+   CLASSIC en ROTATED volledig gescheiden
+   ============================================================ */
+
+/* -----------------------------
+   FONT + RESET
+------------------------------ */
 @font-face {
   font-family: "LOVD";
   src: url("./fonts/lovd.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
-*{box-sizing:border-box}
-:root{
-  --bg:#0b0b0c;--panel:#111214;--muted:#9aa0a6;--border:#2a2b2f;--accent-weak:#d1d5db22;
-  --green:#33c36f;--yellow:#f2c744;--red:#ff5a5f;--violet:#a78bfa;
 
+* { box-sizing: border-box; }
 
-
-
-html,body{height:100%}
-
-body{
-  margin:0;
-  font-family:"LOVD", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  background:var(--bg);
-  color:#ececec;
-}
-
-/* Weeknavigatie + headerknoppen in LOVD-font */
-.week-nav .btn,
-.topbar .btn,
-.topbar button {
+html, body {
+  height: 100%;
+  margin: 0;
+  background: #0b0b0c;
+  color: #ececec;
   font-family: "LOVD", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  overflow-x: auto;      /* horizontaal scrollen toestaan als het nodig is */
+  overflow-y: auto;   /* planner mag groeien */
 }
 
+/* -----------------------------
+   CSS VARIABLES
+------------------------------ */
+:root {
+  --bg: #0b0b0c;
+  --panel: #111214;
+  --muted: #9aa0a6;
+  --border: #2a2b2f;
+  --accent-weak: #d1d5db22;
+  --weekend-day: #1d1d22;
+  --daylabel: #2d2e32;
+  
 
-.topbar{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10}
-.brand{display:flex;align-items:center;gap:10px}
-.logo{font-weight:800;letter-spacing:.15em;background:#fff;color:#000;padding:4px 10px;border-radius:999px}
-.title{font-weight:600;opacity:.9}
-.week-nav{display:flex;gap:8px;align-items:center}
-.week-label{min-width:320px;text-align:center;font-weight:400}
-.actions{display:flex;gap:8px;align-items:center}
-.pwd{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;border-radius:10px;padding:8px 10px;min-width:180px}
-.btn{border:1px solid var(--border);background:#17181b;color:#eaeaea;border-radius:10px;padding:8px 10px;cursor:pointer}
-.btn:hover{background:#1f2024}.btn.ghost{background:transparent}.btn.small{padding:6px 8px;font-size:.9rem}.btn.danger{border-color:#ff5a5f55;color:#ffb3b5}
 
-.layout{display:grid;grid-template-columns:1fr 420px;gap:16px;max-width:100%;margin:12px auto;padding:16 0px}
-.layout.single{grid-template-columns:1fr}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px;height:max-content}
+  --green: #33c36f;
+  --yellow: #f2c744;
+  --red: #ff5a5f;
+  --violet: #a78bfa;
+}
 
-.card{border:1px solid var(--border);background:#0f1012;border-radius:12px;padding:12px;display:grid;gap:10px;margin-bottom:12px}
-.row{display:grid;gap:10px}.row.two{grid-template-columns:1fr 1fr}.row.three{grid-template-columns:1fr 1fr 1fr 120px}
-label{display:grid;gap:6px;font-size:.95rem;color:#d8d8d8}
-input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;border-radius:10px;padding:10px 12px}
-.list{margin:0;padding-left:18px}.small li{font-size:.95rem;color:#cfcfcf}
-.board{
+/* -----------------------------
+   HEADER / TOPBAR
+------------------------------ */
+.topbar {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-weight: 800;
+  letter-spacing: .15em;
+  background: #fff;
+  color: #000;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.title { font-weight: 600; opacity: .9; }
+
+.week-nav,
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.week-label {
+  min-width: 320px;
+  text-align: center;
+  font-weight: 400;
+}
+
+.btn,
+.topbar button {
+  border: 1px solid var(--border);
+  background: #17181b;
+  color: #eaeaea;
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: "LOVD";
+}
+.btn:hover { background: #1f2024; }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 6px 8px; font-size: .9rem; }
+.btn.danger { border-color: #ff5a5f55; color: #ffb3b5; }
+
+/* -----------------------------
+   LAYOUT CONTAINERS
+------------------------------ */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  max-width: 100%;
+  margin: 12px auto;
+  padding: 16px 0;
+}
+
+.layout.single { grid-template-columns: 1fr; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  height: max-content;
+}
+
+/* -----------------------------
+   INPUTS, CARDS, LISTS
+------------------------------ */
+.card {
+  border: 1px solid var(--border);
+  background: #0f1012;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.row { display: grid; gap: 10px; }
+.row.two { grid-template-columns: 1fr 1fr; }
+.row.three { grid-template-columns: 1fr 1fr 1fr 120px; }
+
+label { display: grid; gap: 6px; font-size: .95rem; color: #d8d8d8; }
+
+input,
+select {
+  border: 1px solid var(--border);
+  background: #0b0c0e;
+  color: #eaeaea;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.list { margin: 0; padding-left: 18px; }
+.small li { font-size: .95rem; color: #cfcfcf; }
+
+/* -----------------------------
+   BOARD + GRID WRAPPER
+------------------------------ */
+.board {
   overflow: auto;
   width: 100%;
-  max-width: none;
 }
 
-.grid-wrap{margin-bottom:10px}
+.grid-wrap { margin-bottom: 10px; }
 
-/* Kalender */
-.grid{display:grid;grid-template-columns: 150px repeat(7, minmax(120px, 1fr));border:1px solid var(--border);border-radius:12px;background:var(--panel);min-width:100%}
-.grid .corner,.grid .dow{background:#0f1012;border-bottom:1px solid var(--border);border-right:1px solid var(--border);padding:12px;font-weight:600;text-align:center}
-.grid .corner{position:sticky;left:0;z-index:3;text-align:left}
-.grid .emp{background:#0f1012;border-right:1px solid var(--border);padding:12px;font-weight:600;position:sticky;left:0;z-index:2}
-
-.cell{
-  border-right:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-  min-height:110px;
-  position:relative;
+/* ============================================================
+   CLASSIC VIEW — BASIS
+   (Alleen voor body.planner-page, NIET voor rotated)
+============================================================ */
+body.planner-page:not(.rotated-page) .grid {
+  display: grid;
+  grid-template-columns: 150px repeat(7, minmax(120px, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  min-width: 100%;
 }
 
-/* Binnenkant van de cel in 2 helften onder elkaar */
-.cell-inner{
-  display:flex;
-  flex-direction:column;
-  height:100%;
-  position:relative; /* nodig voor full-day */
+body.planner-page:not(.rotated-page) .grid .corner,
+body.planner-page:not(.rotated-page) .grid .dow {
+  background: #0f1012;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  font-weight: 600;
+  text-align: center;
 }
 
-/* Ochtend / middag helften */
-.cell-half{
-  flex:1;
-  position:relative;
-  padding-top:2px;      /* ruimte voor label */
+body.planner-page:not(.rotated-page) .grid .corner {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left;
 }
 
-.cell-half + .cell-half{
-  /*border-top:1px solid #f5f5f5;*/
-  border-top:1px solid var(--border);
+body.planner-page:not(.rotated-page) .grid .emp {
+  background: #0f1012;
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  z-index: 2;
 }
 
-.cell-am{
-  background: #101015;   /* iets donkerder voor ochtend */
+/* -----------------------------
+   CLASSIC CEL STRUCTUUR
+------------------------------ */
+body.planner-page:not(.rotated-page) .cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 110px;
+  position: relative;
+  display: block;
+  padding: 0;
 }
 
-.cell-pm{
-  background: #15151b;   /* iets lichter / andere tint voor middag */
+body.planner-page:not(.rotated-page) .cell-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
 }
 
-
-/* Duidelijkere horizontale lijnen tussen medewerkers */
-.grid .cell {
-    border-bottom: 2px solid #787879; /* iets lichter en duidelijker */
-    
-    /* ✔ Dit maakt meerdere taken onder elkaar mogelijk */
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 2px 4px;
-}
-.grid .emp {
-    border-bottom: 2px solid #787879;
+body.planner-page:not(.rotated-page) .cell-half {
+  flex: 1 1 50%;
+  display: block;
+  position: relative;
 }
 
-/* =========================================
-   Vandaag markeren in de planner
-   ========================================= */
-.grid .dow.today {
-  background: #686a71;              /* net iets lichter */
-  box-shadow: inset 0 -2px 0 var(#686a71);
+.cell-am { background: #101015; }
+.cell-pm { background: #15151b; }
+
+body.planner-page:not(.rotated-page) .cell-half + .cell-half {
+  border-top: 1px solid var(--border);
 }
 
-.cell.today {
-  box-shadow: inset 0 0 0 2px var(#686a71);  /* kader om cel van vandaag */
+/* -----------------------------
+   CLASSIC DROPZONES
+------------------------------ */
+body.planner-page:not(.rotated-page) .cell-half .dropzone {
+  position: absolute;
+  inset: 0;
 }
 
-.vehiclebar .cell.today {
-  box-shadow: inset 0 0 0 2px var(--green);  /* zelfde kader in voertuigbalk */
+body.planner-page:not(.rotated-page) .cell-half:hover .dropzone {
+  outline: 2px dashed #303238;
 }
 
-
-/* Items in beide helften */
-.cell .items,
-.cell .items-am,
-.cell .items-pm{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  padding:6px 8px 8px 8px;
+/* -----------------------------
+   CLASSIC ITEMS
+------------------------------ */
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  padding: 1px 2px 2px 2px;
+  overflow: hidden;
 }
 
-.item.conflict {
-  outline: 3px solid #ff3b30;
-  animation: pulse 1s infinite alternate;
+.item.productie { background: rgba(51,195,111,0.15); outline: 2px solid var(--green); }
+.item.montage   { background: rgba(242,199,68,0.15); outline: 2px solid var(--yellow); }
+.item.vrij      { background: rgba(255,90,95,0.12); outline: 2px solid var(--red); }
+
+.item .top1,
+.item .top2 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@keyframes pulse {
-  0% { outline-color: #ff3b30; }
-  100% { outline-color: #ff7b7b; }
+.item .meta {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-top: 2px;
 }
 
-/* Dropzone per helft (alleen over die helft) */
-.cell .dropzone{
-  position:absolute;
-  inset:0;
-  border-radius:8px;
+.item .x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: .8;
 }
+.item .x:hover { opacity: 1; }
 
-.cell-half:hover .dropzone{
-  outline:2px dashed #303238;
+/* Urgent */
+.task.urgent::before,
+.top1.urgent::before {
+  content: "❗";
+  color: red;
+  font-weight: bold;
+  margin-right: 6px;
 }
-
-.item {border-radius: 6px;overflow: hidden;}
-.item .title{font-size:.95rem;font-weight:700;color:#f5f5f5}
-.item .meta{grid-column:1 / -1;font-size:.85rem;color:var(--muted)}
-.item .x{border:none;background:transparent;color:#fff;font-weight:800;cursor:pointer}
-.item.productie{background:rgba(51,195,111,0.15);outline:2px solid var(--green)}
-.item.montage{background:rgba(242,199,68,0.15);outline:2px solid var(--yellow)}
-.item.vrij{background:rgba(255,90,95,0.12);outline:2px solid var(--red)}
-.item .flag{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;background:#ff3b30;color:#fff;font-weight:800}
-.item.full-day{
-  position: relative;   /* niet meer absoluut */
-  inset: auto;
-  z-index: 1;
-  margin: 4px 8px 2px 8px;  /* mooi uitlijnen met de inhoud van de helften */
-}
-
-/* Voertuig-balk */
-.vehiclebar,
-.planner,
-.board,
-.grid {
+/* ============================================================
+   CLASSIC VIEW — VOERTUIGBALK
+============================================================ */
+body.planner-page:not(.rotated-page) .vehiclebar {
+  display: grid;
+  grid-template-columns: 150px repeat(7, minmax(120px, 1fr));
   width: 100%;
-  min-width:100%;
-  margin: 0 auto;
+  min-width: 100%;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  background: var(--panel);
 }
 
-.vehiclebar .label{background:#0f1012;border-right:1px solid var(--border);padding:8px 12px;font-weight:600;position:sticky;left:0;z-index:1}
-.vehiclebar .cell{
-  padding: 2px 6px;          /* zo klein mogelijk */
-  min-height: auto;          /* geen vaste hoogte */
+.vehiclebar .label {
+  background: #0f1012;
+  border-right: 1px solid var(--border);
+  padding: 8px 12px;
+  font-weight: 600;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.vehiclebar .cell {
+  padding: 2px 6px;
+  min-height: auto;
   display: flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  text-overflow: ellipsis;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.vehiclebar .both{color:#fff}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
-.badge.bus{background:color-mix(in oklab, var(--violet) 30%, transparent)}
-.badge.bakwagen{background:color-mix(in oklab, var(--violet) 20%, transparent)}
-.badge.private{outline:2px dashed var(--violet)}
-
-.icon-btn{border:1px solid var(--border);background:#17181b;color:#eaeaea;border-radius:10px;padding:6px 8px;cursor:pointer}
-.icon-btn.danger{border-color:#ff5a5f55;color:#ffb3b5}
-
-@media (max-width:1080px){
-  .layout{grid-template-columns:1fr}
-
-  /* Kalender en voertuigbalk exact dezelfde kolommen */
-  .grid,
-  .vehiclebar {
-    grid-template-columns:150px repeat(7, minmax(120px, 1fr));
-  }
-
-  .vehiclebar{
-    display:grid;
-    width:100%;
-    border:1px solid var(--line,#e6e6e6);
-    border-top:none;
-    border-radius:0 0 12px 12px;
-    overflow:hidden;
-  }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
 }
 
-/* Backdrop */
+.badge.bus      { background: color-mix(in oklab, var(--violet) 30%, transparent); }
+.badge.bakwagen { background: color-mix(in oklab, var(--violet) 20%, transparent); }
+.badge.private  { outline: 2px dashed var(--violet); }
+
+/* ============================================================
+   MODALS (Bewerken taak + productietekst)
+============================================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.55);
   display: flex;
   justify-content: center;
-  align-items: center;   /*  ⬅️ Geen ruimte boven/onder */
+  align-items: center;
   padding: 0;
   z-index: 9999;
 }
 
-/* Modal */
 .modal {
-  width: 420px;          /* smaller = minder linksruimte */
+  width: 420px;
   background: #1e1e1e;
   color: #ddd;
   border-radius: 12px;
@@ -250,11 +372,9 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   overflow-y: auto;
 }
 
-/* Header */
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   font-size: 22px;
   font-weight: 600;
   margin-bottom: 15px;
@@ -275,93 +395,10 @@ input,select{border:1px solid var(--border);background:#0b0c0e;color:#eaeaea;bor
   color: #bbb;
 }
 
-.row {
-  display: flex;
-  gap: 8px;
-}
-
 .radio-group {
   display: flex;
   gap: 18px;
   margin-bottom: 10px;
-}
-
-input, select, textarea {
-  width: 100%;
-  background: #2a2a2a;
-  border: 1px solid #444;
-  padding: 8px;
-  border-radius: 6px;
-  color: #ddd;
-  font-size: 14px;
-}
-
-textarea {
-  height: 60px;
-  resize: vertical;
-}
-
-.mt {
-  margin-top: 12px;
-}
-
-/* Footer */
-.modal-footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 20px;
-  padding-top: 10px;
-}
-
-button.primary {
-  background: #2f6efc;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-button.danger {
-  background: #a8323c;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.small-btn {
-  background: #333;
-  border: 1px solid #555;
-  padding: 5px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #ccc;
-  font-size: 12px;
-}
-
-
-.row {
-  display: flex;
-  gap: 8px;
-}
-
-.radio-group {
-  display: flex;
-  gap: 15px;
-  margin: 4px 0 10px;
-}
-
-.small-btn {
-  background: #333;
-  border: 1px solid #555;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #ccc;
 }
 
 input, select, textarea {
@@ -378,144 +415,55 @@ textarea {
   resize: vertical;
 }
 
-.chk input {
-  margin-right: 5px;
-}
+.mt { margin-top: 12px; }
 
-.mt {
-  margin-top: 12px;
-}
-
-/* Footer buttons */
 .modal-footer {
   display: flex;
   justify-content: space-between;
   margin-top: 18px;
+  padding-top: 10px;
 }
 
 button.primary {
   background: #2f6efc;
-  color: white;
-  border: none;
+  color: #fff;
   padding: 8px 14px;
+  border: none;
   border-radius: 6px;
   cursor: pointer;
 }
-
 button.danger {
   background: #a8323c;
-  color: white;
-  border: none;
+  color: #fff;
   padding: 8px 14px;
   border-radius: 6px;
-  cursor: pointer;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  overflow: auto;
-  padding-top: 50px;
-}
-#taskModal[hidden] {
-    display: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-
-/* optioneel: iets compacter op kleine schermen */
-@media (max-width: 768px) {
-  .modal-dialog {
-    margin: 4vh 8px;
-    max-height: 92vh;
-  }
-}
-
-
-.task .remove {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: none;
   border: none;
-  color: #fff;
-  font-size: 1rem;
   cursor: pointer;
-  line-height: 1;
 }
 
-.task .remove:hover {
-  color: #f55;
-}
-
-.task .remove::before {
-  content: "×";
-}
-
-
-/* --- Verwijder-kruisje rechtsboven in taak --- */
- /* ruimte voor de X zodat tekst niet eronder valt */
-.item .x{
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  line-height: 1;
-  font-size: 14px;
-  opacity: .8;
-}
-.item .x:hover{ opacity: 1; }
-
-
-/* LOVD team notifications row */
+/* ============================================================
+   EMPLOYEE SPECIAL (LOVD)
+============================================================ */
 .emp-LOVD .item {
   background: rgba(68,147,255,.15);
   outline: 2px solid #2a7bff;
 }
 
-@media (min-width: 1400px){
-  .cell .items{ gap: 8px; }
-  .board{ padding: 8px 12px; }
+.item.dragging { opacity: .5; }
+
+.dropzone.drop-hover {
+  outline: 2px dashed #1976d2;
+  outline-offset: -5px;
 }
 
-/* Two-line title layout, same styling */
-.item .title { text-align: left; }
-.item .top1, .item .top2 { margin: 0; padding: 0px; }
-/* Ensure task height doesn't change noticeably */
-
-/* Full-width calendar and layout */
-.layout, .board, .grid, .vehiclebar { width: 100vw; max-width: none; margin: 0; }
-
-.vehiclebar{ display:grid; grid-template-columns:150px repeat(7, minmax(120px, 1fr));min-width:100%}
 
 
-/* --- Task two-line title stacked vertically --- */
-.item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  border-radius: 6px;
-  overflow: hidden;
-  padding: 1px 2px 2px 2px; /* ← nieuw */
-}
 
-.task.urgent::before {
-  content: "❗";
-  color: red;
-  font-weight: bold;
-  margin-right: 6px;
-  font-size: 16px;
-}
 
-/* =========================================================
-   Compactere layout alleen voor admin-pagina
-   ========================================================= */
+
+/* ============================================================
+   ADMIN PAGE
+============================================================ */
 .admin-page .layout.small {
   max-width: 900px;
   padding: 12px 16px;
@@ -526,10 +474,7 @@ button.danger {
   gap: 8px;
 }
 
-.admin-page h2 {
-  margin-bottom: 6px;
-}
-
+.admin-page h2 { margin-bottom: 6px; }
 .admin-page h3 {
   margin: 10px 0 4px;
   font-size: 1rem;
@@ -538,7 +483,6 @@ button.danger {
 .admin-page .row {
   gap: 8px;
   margin-bottom: 6px;
-  flex-wrap: nowrap;
 }
 
 .admin-page .grid2 {
@@ -547,146 +491,393 @@ button.danger {
   gap: 8px;
 }
 
-.admin-page .list {
-  margin-top: 6px;
-  gap: 6px;
-}
-
 .admin-page .list-item {
   padding: 8px 10px;
   margin-bottom: 4px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
 }
 
 .admin-page .list-item input,
 .admin-page .list-item textarea,
 .admin-page .list-item select {
   padding: 4px 6px;
-  font-size: 0.9rem;
-}
-
-.admin-page .list-item .row.mt {
-  margin-top: 4px;
+  font-size: .9rem;
 }
 
 .admin-page .btn,
-.admin-page button,
-.admin-page .small {
+.admin-page button {
   padding: 4px 8px;
-  font-size: 0.85rem;
+  font-size: .85rem;
 }
 
-.admin-page .badge.small {
-  font-size: 0.7rem;
-  padding: 2px 6px;
+/* ============================================================
+   MOBILE ADAPTATIONS
+============================================================ */
+@media (max-width: 1080px) {
+  body.planner-page:not(.rotated-page) .layout {
+    grid-template-columns: 1fr;
+  }
+
+  body.planner-page:not(.rotated-page) .grid,
+  body.planner-page:not(.rotated-page) .vehiclebar {
+    grid-template-columns: 150px repeat(7, minmax(120px, 1fr));
+  }
+
+  .vehiclebar {
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+  }
 }
 
-.checkbox-list label {
-  display: block;
+@media (max-width: 768px) {
+  .modal {
+    width: 92vw;
+    max-height: 92vh;
+    margin: 4vh 8px;
+  }
+}
+
+/* ============================================================
+   FIXES: TODAY HIGHLIGHT + Z-INDEX
+============================================================ */
+.grid .dow.today {
+  background: #686a71;
+}
+
+body.planner-page:not(.rotated-page) .cell.today {
+  box-shadow: inset 0 0 0 2px #686a71;
+}
+
+body.planner-page:not(.rotated-page) .vehiclebar .cell.today {
+  box-shadow: inset 0 0 0 2px var(--green);
+}
+
+/* ============================================================
+   FULL-DAY CLASSIC TASKS
+============================================================ */
+.item.full-day {
+  margin: 4px 8px 2px 8px;
+  width: calc(100% - 16px);
+  z-index: 1;
+}
+
+
+
+/* ============================================================
+   END OF CLEAN CSS
+   Alles hierboven is opgeschoond, gescheiden en functioneel
+============================================================ */
+/* Modal hide fix (nodig voor correcte werking) */
+#taskModal[hidden],
+#prodTextModal[hidden] {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+
+
+/* =========================================
+   SERVICE LIST STIJL — GEBRUIKT SAME LAYOUT ALS ROTATED
+========================================= */
+
+.svc-wrapper {
+  height: calc(100vh - 55px);
+  overflow-y: auto;
+  padding: 15px;
+}
+
+.svc-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+/* Service-kaarten zelfde stijl als taak-kaarten */
+.svc-item {
+  background: var(--task-bg, #222);
+  border: 2px solid white;
+  color: white;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--card-shadow);
+}
+
+.svc-item .svc-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.svc-item .svc-proj {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.svc-item .svc-proj small {
+  color: rgba(255,255,255,0.7);
+}
+
+.svc-item .svc-desc {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: rgba(255,255,255,0.9);
+}
+
+/* Prioriteit-strepen */
+.prio1 { border-left: 6px solid #e60000; }
+.prio2 { border-left: 6px solid #f2a100; }
+.prio3 { border-left: 6px solid #0077cc; }
+
+/* Gereed-knop */
+.svc-done {
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid white;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.svc-done:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* ============================================================
+   ROTATED VIEW — SCHONE DEFINITIE
+   <body class="rotated-page">
+============================================================ */
+
+/* Wrapper: header + grid samen scrollbaar */
+body.rotated-page .rot-scroll {
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: auto;
+  margin-top: 5px;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Header en grid gebruiken EXACT dezelfde kolommen */
+body.rotated-page .rot-head-row,
+body.rotated-page #rotGrid {
+  display: grid;
+  grid-template-columns: 150px repeat(var(--emp-count), 1fr);
+  width: 100%;              /* <<< heel belangrijk */
+  min-width: 100%;                 /* <<< header blijft sync */
+  background: var(--panel);
+}
+
+/* Header */
+body.rotated-page .rot-head-row {
+  position: sticky;
+  top: 67px;
+  z-index: 50;
+  padding: 12px 6px;
+  font-weight: 600;
+  border-bottom: 2px solid #787879;
+}
+
+/* Daglabels links */
+body.rotated-page .rot-daylabel {
+  background: #0b0b0c;
+  padding: 12px;
+  font-weight: 600;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid #686666;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+}
+body.rotated-page .rot-daylabel.today  { background: var(--daylabel); }
+body.rotated-page .rot-daylabel.weekend { background: var(--weekend-day); }
+/* Volledige weekend-rij (alle cellen) */
+body.rotated-page .rot-cell.weekend {
+  background: #14141a;              /* andere achtergrond dan doordeweeks */
+}
+body.rotated-page .rot-cell.today .rot-am,
+body.rotated-page .rot-cell.today .rot-pm {
+  background: var(--daylabel);
+}
+
+/* optioneel: iets andere streep in het midden van de dag */
+body.rotated-page .rot-cell.weekend .rot-am {
+  border-bottom: 1px dashed #555;
+}
+
+
+/* Week-separator */
+body.rotated-page .rot-weekrow {
+  grid-column: 1 / -1;
+  background: #1a1a1d;
+  color: #ccc;
+  padding-left: 10px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  border-top: 2px solid #e3c547;
+  border-bottom: 1px solid #333;
+}
+
+/* Elke cel rechts van daglabel */
+body.rotated-page .rot-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid #686666;
+  min-height: 110px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;   /* AM boven PM */
+}
+
+/* Weekend-rij (zaterdag/zondag) andere achtergrond */
+body.rotated-page .rot-cell.weekend {
+  background: #16161b;   /* net wat donkerder dan normaal */
+}
+
+
+
+/* AM/PM zijn twee gelijke helften */
+body.rotated-page .rot-am,
+body.rotated-page .rot-pm {
+  flex: 1 1 0;
+  padding: 4px 6px;
+  position: relative;
+  overflow: visible;
+  width: 100%;
+}
+
+body.rotated-page .rot-am {
+  border-bottom: 1px dashed #444;
+}
+
+/* Hover highlight */
+body.rotated-page .rot-part:hover::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px dashed #303238;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Taken */
+body.rotated-page .rot-cell .item {
+  border-radius: 6px;
+  padding: 4px 8px 6px 8px;
   margin-bottom: 4px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.checkbox-list label {
-  display: block;
-  margin-bottom: 4px;
-}
-.checkbox-list input[type="checkbox"] {
-  margin-right: 6px;
+body.rotated-page .rot-cell .item.productie { background: rgba(51,195,111,.15); outline: 2px solid var(--green); }
+body.rotated-page .rot-cell .item.montage   { background: rgba(242,199,68,.15); outline: 2px solid var(--yellow); }
+body.rotated-page .rot-cell .item.vrij      { background: rgba(255,90,95,.12); outline: 2px solid var(--red); }
+
+/* voertuigregel in daglabel */
+body.rotated-page .rot-veh-line {
+  margin-top: 4px;
+  padding: 3px 6px;
+  background: rgba(170,90,255,0.15);
+  border-left: 3px solid #AA5AFF;
+  border-radius: 4px;
+  color: #E7D3FF;
+  font-size: .8rem;
+  font-weight: 500;
 }
 
-
-.item.dragging {
-  opacity: 0.5;
+/* FORCEER elke medewerker-kolom exact even breed */
+body.rotated-page #rotGrid,
+body.rotated-page .rot-head-row {
+  grid-template-columns: 150px repeat(var(--emp-count), minmax(0, 1fr)) !important;
+}
+/* Items mogen de kolombreedte niet oprekken */
+body.rotated-page .rot-cell .item {
+  max-width: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+body.rotated-page .rot-cell {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 
-.dropzone.drop-hover {
-  outline: 2px dashed #1976d2;
-  outline-offset: -5px;
-}
-/* ========== ROTATED VIEW ========== */
+/* ============================
+   ROTATED GRID FIX
+   Even brede kolommen + geen overflow
+============================ */
 
 .rotated-grid {
     display: grid;
     grid-auto-rows: auto;
-    grid-template-columns: 150px repeat(var(--emp-count, 5), 1fr);
-    gap: 0;
-    margin: 20px;
-    border: 1px solid #333;
+    
+    /* Dagkolom + medewerkers automatisch even breed */
+    grid-template-columns: 160px repeat(var(--emp-count), 1fr);
+
+    /* voorkomt dat de grid buiten het scherm valt */
+    width: 100%;
+    min-width: 100%;
+    overflow-x: auto;
+
+    /* optioneel: nette scrollbalk */
+    scrollbar-width: thin;
 }
 
-/* Kop */
-.rot-head {
-    background: #222;
-    color: #ddd;
-    padding: 8px;
-    font-weight: 600;
-    border-bottom: 1px solid #444;
+/* Header dezelfde breedteverdeling geven */
+.rot-head-row {
+    display: grid;
+    grid-template-columns: 160px repeat(var(--emp-count), 1fr);
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 20;
 }
 
-/* Daglabel links */
-.rot-daylabel {
-    background: #111;
-    border-bottom: 1px solid #333;
-    border-right: 1px solid #333;
-    padding: 10px;
-    font-weight: 600;
-}
-.rot-daylabel.today {
-    background: #2d2e32;
-}
-.rot-daylabel.weekend {
-    background: #1a1b1d;
-}
+/* ===============================
+   LOVD taken blauw in rotated
+=============================== */
 
-/* Weekregel */
-.rot-weekrow {
-    grid-column: 1 / -1;
-    background: #1a1a1d;
-    color: #ccc;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    padding-left: 10px;
-    border-top: 2px solid #e3c547;
-    border-bottom: 1px solid #333;
-}
-
-/* Cel */
-.rot-cell {
-    display: flex;
-    flex-direction: column;
-    border-bottom: 1px solid #333;
-    border-right: 1px solid #333;
-    min-height: 70px;
-}
-
-/* AM / PM */
-.rot-am, .rot-pm {
-    flex: 1;
-    padding: 4px;
-}
-.rot-am {
-    border-bottom: 1px dashed #444;
-}
-
-/* Taken */
-.rot-cell .item {
-    padding: 4px 8px;
-    border-radius: 4px;
-    margin: 2px 0;
-    cursor: pointer;
-}
-.rot-cell .item .x {
-    float: right;
-    cursor: pointer;
-}
 .item.lovd {
-    background: rgba(0, 122, 255, .20);
-    outline: 2px solid #0a84ff;
+    background: rgba(0, 122, 255, .25) !important;
+    outline: 2px solid #0a84ff !important;
 }
 
-.item.lovd .title,
-.item.lovd .meta {
-    color: #dce9ff;
+.item.lovd .top1 {
+    color: #fff !important;
 }
 
+.item.lovd .meta,
+.item.lovd .note {
+    color: #d7e4ff !important;        /* subtiele lichtblauwe tekst */
 }
+/* ===================================================
+   WEEKEND KLEUR — volledige rij (zaterdag + zondag)
+=================================================== */
+
+.rot-daylabel.weekend {
+    background: #18181a;        /* daglabel links */
+}
+
+.rot-cell.weekend {
+    background: #111113;        /* hele rij */
+}
+
+.rot-cell.weekend .rot-am,
+.rot-cell.weekend .rot-pm {
+    background: var(--weekend-day);        /* AM/PM binnenin */
+}
+
+.rot-cell.weekend,
+.rot-daylabel.weekend {
+    border-color: #686a71;      /* iets lichtere lijnen */
+}
+

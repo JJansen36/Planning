@@ -63,7 +63,11 @@ async function loadProjects() {
 
   PROJECTS = data || [];
   fillProjectDropdown();
-  // SECTIES LADEN IN MODAL
+}  // <-- HIER MISSTE EEN SLUITENDE BRACE
+
+
+
+// SECTIES LADEN IN MODAL
 async function loadSectionOptions(projectId, preselect = null) {
   const sel = document.getElementById("taskSection");
   if (!sel) return;
@@ -91,11 +95,8 @@ async function loadSectionOptions(projectId, preselect = null) {
 
     sel.disabled = false;
   }
-
-  if (preselect) sel.value = preselect;
 }
 
-}
 
 function fillProjectDropdown() {
   const sel = document.getElementById("taskProject");
@@ -222,20 +223,21 @@ function setupDragAndDrop() {
   // -------------------------------
   // 3) SHIFT = kopiëren
   // -------------------------------
-  if (e.shiftKey) {
-    const copy = {
-      project_id: rec.project_id,
-      section_id: rec.project_section_id,
-      type: rec.type,
-      urgent: rec.urgent,
-      notes: rec.notes,
-      vehicle: rec.vehicle,
-      start_date: newDate,
-      end_date: newDate,
-      start_time: t.start,
-      end_time: t.end,
-      block: newBlock,
-    };
+    if (e.shiftKey) {
+        const copy = {
+            project_id: rec.project_sections?.project_id || null,
+            project_section_id: rec.project_section_id || null,
+            type: rec.type,
+            urgent: rec.urgent,
+            notes: rec.notes,
+            vehicle: rec.vehicle,
+            start_date: newDate,
+            end_date: newDate,
+            start_time: t.start,
+            end_time: t.end,
+            block: newBlock,
+        };
+
 
     const { data: newRec, error: errInsert } = await sb
       .from("assignments")
@@ -572,6 +574,7 @@ async function fetchAll() {
 
     project_sections:assignments_project_section_id_fkey (
       section_name,
+      production_text,
       project_id,
       projects (
         number,
@@ -1075,6 +1078,9 @@ function renderVehicleBar(bar, monday) {
 function renderWeek(grid, monday, bar) {
   grid.innerHTML = "";
   headerRow(grid, monday);
+
+
+
   const days = [];
   for (let i = 0; i < 7; i++) days.push(addDays(monday, i));
 
@@ -1314,9 +1320,82 @@ if (taskProj) taskProj.value = pid ?? "";
 
   await loadSectionOptions(rec.project_id, rec.project_section_id || null);
 
+// ► Productietekst: klik pas activeren als knop écht bestaat
+const btn = document.querySelector("#taskModal #openProdText");
+if (btn) {
+    btn.onclick = (ev) => {
+        ev.stopPropagation(); // voorkomt bubbelen naar item-click
+        const txt = rec.project_sections?.production_text || "(geen productie tekst)";
+        document.getElementById("prodTextContent").textContent = txt;
+        document.getElementById("prodTextModal").hidden = false;
+    };
+}
+
+
   // Modal tonen
   document.getElementById("taskModal").hidden = false;
 
+// ► READONLY MODE VOOR NIET-ADMINS
+if (!isAdmin()) {
+
+    // Alle bewerkbare UI verbergen
+    const hideIds = [
+        "taskProject", "taskSection", "mEmpList",
+        "toggleProjSearch", "mProjAdd", "projSearchWrap",
+        "mProj", "mNotes", "vehicleRow"
+    ];
+    hideIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = "none";
+    });
+
+    // Verberg radio groepen: type, dagdeel, voertuig keuze
+    document.querySelectorAll(".radio-group").forEach(e => {
+        e.style.display = "none";
+    });
+
+    // Urgent verbergen
+    const urgLbl = document.getElementById("mUrgent")?.closest("label");
+    if (urgLbl) urgLbl.style.display = "none";
+
+    // Bewerkknoppen verbergen
+    document.getElementById("mSave").style.display = "none";
+    document.getElementById("mDelete").style.display = "none";
+
+    // --- READONLY DATA INVULLEN ---
+    document.getElementById("readonlyInfo").style.display = "block";
+
+    const proj = rec.project_sections?.projects;
+    const sec  = rec.project_sections;
+
+    document.getElementById("roProject").textContent =
+        proj ? `${proj.number} – ${proj.name}` : "(geen project)";
+
+    document.getElementById("roSection").textContent =
+        sec?.section_name || "(geen sectie)";
+
+    // Medewerkers ophalen
+    let names = [];
+    if (Array.isArray(rec.employees)) {
+        names = rec.employees.map(id => {
+            const e = cache.employees.find(x => x.id === id);
+            return e ? e.name : "?";
+        });
+    }
+    document.getElementById("roEmployees").textContent =
+        names.length ? names.join(", ") : "(geen medewerkers)";
+
+    document.getElementById("roDates").textContent =
+        `${rec.start_date} t/m ${rec.end_date}`;
+
+    const blkMap = { am:"Ochtend", pm:"Middag", full:"Hele dag" };
+    document.getElementById("roBlock").textContent =
+        blkMap[rec.block] || "Onbekend";
+
+    document.getElementById("roType").textContent = rec.type || "-";
+    document.getElementById("roVehicle").textContent = rec.vehicle || "n.v.t.";
+    document.getElementById("roNotes").textContent = rec.notes || "(geen)";
+}
 
   const urgEl = document.getElementById("mUrgent");
   if (urgEl) urgEl.checked = !!rec.urgent;
@@ -1675,6 +1754,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupLogout();
   wire(); // <-- EERST event handlers koppelen
+
+  document.getElementById("prodClose")?.addEventListener("click", () => {
+    document.getElementById("prodTextModal").hidden = true;
+});
+
 
   await loadProjects(); // <-- dan pas projecten ophalen
 

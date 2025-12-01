@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <title>LOVD Service Aanvragen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth.js"></script>
+
+
+  <link rel="stylesheet" href="service.css">
+</head>
+
+<body class="svc-page">
+
+  <header class="svc-header">
+    <h1>Service Aanvraag</h1>
+  </header>
+
+  <div class="svc-container">
+    <form id="svcForm" class="svc-form">
+
+      <label>Project</label>
+      <select id="svcProject"></select>
+
+      <label>Sectie</label>
+      <select id="svcSection"></select>
+
+      <label>Omschrijving</label>
+      <textarea id="svcDesc" rows="4"></textarea>
+
+      <label>Prioriteit</label>
+      <select id="svcPrio">
+        <option value="1">1 — Hoog</option>
+        <option value="2">2 — Medium</option>
+        <option value="3">3 — Laag</option>
+      </select>
+
+      <button type="submit" class="btn">Opslaan</button>
+    </form>
+  </div>
+
+  <h2>Openstaande Service Taken</h2>
+<div id="svcList" class="svc-list"></div>
+
+
+  <script src="service.js"></script>
+</body>
+</html>
+  

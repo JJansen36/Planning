@@ -3,23 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <title>Planning – Rotated View</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+      <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="auth.js"></script>
     <script src="app.js"></script>
     <script src="rotated.js" defer></script>
 </head>
-<body>
+
 
 <body class="rotated-page">
   
 <header class="topbar">
-    <h1>Rotated Planning</h1>
-    <a href="index.html" class="btn">Classic weergave</a>
+    <div class="brand">
+        <div class="logo">LOVD</div>
+        <div class="title">Rotated Planning</div>
+    </div>
+
+    <div class="week-nav">
+        <button id="prevRot" class="btn">← Vorige</button>
+        <div id="rotWeekLabel" class="week-label"></div>
+        <button id="nextRot" class="btn">Volgende →</button>
+        <button id="todayRot" class="btn ghost">Vandaag</button>
+    </div>
+
+    <div>
+        <a href="index.html" class="btn">Classic weergave</a>
+    </div>
 </header>
 
+<div id="rotHead" class="rot-head-row"></div>
 <div id="rotGrid" class="rotated-grid"></div>
+
+
+
   <!-- MODAL (gekopieerd uit index.html) -->
 <!-- =======================
      TAAK MODAL (GEFIXT)
@@ -48,6 +65,10 @@
 <select id="mProj" style="display:none;"></select>
 
       <select id="taskSection" disabled></select>
+
+      <button id="openProdText" class="btn small" style="margin-top:6px;">
+        📄 Productietekst
+      </button>
 
       <!-- MEDERWERKERS -->
 
@@ -102,6 +123,19 @@
 
     </div>
 
+    <div id="prodTextModal" class="modal-backdrop" hidden>
+      <div class="modal" style="max-width:600px;">
+        <header class="modal-header">
+          <span>Productietekst</span>
+          <button id="prodClose" class="icon-btn">×</button>
+        </header>
+
+        <div id="prodTextContent" 
+            style="white-space:pre-wrap; font-size:14px; line-height:1.4;">
+        </div>
+      </div>
+    </div>
+
     <footer class="modal-footer">
       <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
       <button id="mSave" type="button" class="primary-btn">Opslaan</button>
@@ -119,12 +153,18 @@
 
 <!-- ITEM TEMPLATE -->
 <template id="rotItemTpl">
-  <div class="item" draggable="true">
-      <div class="top1"></div>
+  <div class="item">
+      <div class="top1 task"></div>
+      <div class="note"></div>
       <div class="meta"></div>
+      <div class="extra">
+        <span class="urgent-icon"></span>
+      </div>
       <div class="x">×</div>
   </div>
 </template>
+
+
 
 </body>
 </html>
