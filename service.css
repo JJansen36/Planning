@@ -1,0 +1,60 @@
+.svc-page {
+  background: #f4f4f4;
+  font-family: Arial;
+  padding: 20px;
+}
+
+.svc-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 500px;
+  margin: auto;
+}
+
+.btn {
+  margin-top: 20px;
+  padding: 12px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.service-panel {
+  width: 300px;
+  background: #fff;
+  padding: 10px;
+  border-left: 3px solid #ddd;
+  overflow-y: auto;
+}
+
+.svcItem {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.prio1 { border-left: 5px solid #e60000; }
+.prio2 { border-left: 5px solid #ffaa00; }
+.prio3 { border-left: 5px solid #0080ff; }
+
+.svcTop {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.svcDesc {
+  margin: 8px 0;
+}
+
+.svcDone {
+  padding: 6px 10px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+}

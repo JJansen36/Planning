@@ -4,8 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LOVD Weekplanner</title>
+  <link rel="icon" type="image/png" href="favicon.png">
 
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
   <link rel="stylesheet" href="styles.css" />
 </head>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -52,18 +53,18 @@
 
 <!-- Dag-cell: gesplitst in ochtend / middag -->
 <template id="cellTpl">
-  <div class="cell">
-    <div class="cell-inner">
-      <div class="cell-half cell-am">
-        <div class="dropzone" data-date="2025-11-19" data-part="am"></div>
-        <div class="items items-am"></div>
-      </div>
-      <div class="cell-half cell-pm">
-        <div class="dropzone" data-part="pm"></div>
-        <div class="items items-pm"></div>
+    <div class="cell">
+      <div class="cell-inner">
+        <div class="cell-half cell-am">
+          <div class="dropzone"></div>
+          <div class="items items-am"></div>
+        </div>
+        <div class="cell-half cell-pm">
+          <div class="dropzone"></div>
+          <div class="items items-pm"></div>
+        </div>
       </div>
     </div>
-  </div>
 </template>
 
 <!-- Taak-item -->
@@ -103,6 +104,25 @@
 <select id="mProj" style="display:none;"></select>
 
       <select id="taskSection" disabled></select>
+
+      <div id="readonlyInfo" style="display:none; line-height:1.5; margin-top:10px;">
+        <div><strong>Project:</strong> <span id="roProject"></span></div>
+        <div><strong>Sectie:</strong> <span id="roSection"></span></div>
+        <div><strong>Medewerkers:</strong> <span id="roEmployees"></span></div>
+        <div><strong>Datum:</strong> <span id="roDates"></span></div>
+        <div><strong>Dagdeel:</strong> <span id="roBlock"></span></div>
+        <div><strong>Type:</strong> <span id="roType"></span></div>
+        <div><strong>Voertuig:</strong> <span id="roVehicle"></span></div>
+        <div><strong>Notities:</strong><br>
+          <span id="roNotes"></span>
+        </div>
+      </div>
+
+
+      <button id="openProdText" class="btn small" style="margin-top:6px;">
+        📄 Productietekst
+      </button>
+
 
       <!-- MEDERWERKERS -->
 
@@ -148,7 +168,6 @@
       </div>
 
 
-
       <!-- NOTITIES -->
       <label class="lbl">Notities</label>
       <textarea id="mNotes"></textarea>
@@ -156,6 +175,20 @@
       <input type="hidden" id="mId">
 
     </div>
+
+    <div id="prodTextModal" class="modal-backdrop" hidden>
+      <div class="modal" style="max-width:600px;">
+        <header class="modal-header">
+          <span>Productietekst</span>
+          <button id="prodClose" type="button" class="icon-btn">×</button>
+        </header>
+
+        <div id="prodTextContent"
+            style="white-space:pre-wrap; font-size:14px; line-height:1.4;">
+        </div>
+      </div>
+    </div>
+
 
     <footer class="modal-footer">
       <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
