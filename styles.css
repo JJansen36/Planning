@@ -881,3 +881,10 @@ body.rotated-page .rot-cell {
     border-color: #686a71;      /* iets lichtere lijnen */
 }
 
+/* ► highlight gekoppelde bus/bakwagen-taken in rotated */
+.item.vehicle-highlight {
+    box-shadow: 0 0 10px 3px #7a5cff !important;
+    z-index: 99 !important;
+    position: relative !important;
+}
+

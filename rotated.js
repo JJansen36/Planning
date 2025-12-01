@@ -35,11 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
 // Highlight functies (MOET BOVENAAN!)
 // -----------------------------
 function highlightVehicleTasks(vehicleName) {
+    const target = (vehicleName || "").toLowerCase().trim();
+
     document.querySelectorAll(".item").forEach(it => {
-        if (
-            it.dataset.vehicle &&
-            it.dataset.vehicle.toLowerCase() === vehicleName.toLowerCase()
-        ) {
+        const v = (it.dataset.vehicle || "").toLowerCase().trim();
+
+        if (v && v === target) {
             it.classList.add("vehicle-highlight");
         }
     });
