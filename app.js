@@ -1351,16 +1351,24 @@ if (taskProj) taskProj.value = pid ?? "";
 
   await loadSectionOptions(rec.project_id, rec.project_section_id || null);
 
-// ► Productietekst: klik pas activeren als knop écht bestaat
+// ► Productietekst alleen tonen als die er is
 const btn = document.querySelector("#taskModal #openProdText");
+
 if (btn) {
-    btn.onclick = (ev) => {
-        ev.stopPropagation(); // voorkomt bubbelen naar item-click
-        const txt = rec.project_sections?.production_text || "(geen productie tekst)";
-        document.getElementById("prodTextContent").textContent = txt;
-        document.getElementById("prodTextModal").hidden = false;
-    };
+    const prodText = rec.project_sections?.production_text?.trim() || "";
+
+    if (prodText.length > 0) {
+        btn.style.display = "";
+        btn.onclick = (ev) => {
+            ev.stopPropagation();
+            document.getElementById("prodTextContent").textContent = prodText;
+            document.getElementById("prodTextModal").hidden = false;
+        };
+    } else {
+        btn.style.display = "none";
+    }
 }
+
 
 
 // PDF tonen indien sectie een bijlage heeft
@@ -1375,6 +1383,21 @@ if (pdfBtn) {
         pdfBtn.style.display = "none";
     }
 }
+
+// 📍 MAPS ROUTE KNOP
+const mapBtn = document.getElementById("openMap");
+const installAddr = rec.project_sections?.projects?.install_address;
+
+if (mapBtn) {
+    if (installAddr) {
+        const mapsUrl = "https://www.google.com/maps?q=" + encodeURIComponent(installAddr);
+        mapBtn.style.display = "";
+        mapBtn.onclick = () => window.open(mapsUrl, "_blank");
+    } else {
+        mapBtn.style.display = "none";
+    }
+}
+
 
   // Modal tonen
   document.getElementById("taskModal").hidden = false;
