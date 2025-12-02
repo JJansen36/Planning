@@ -123,6 +123,10 @@
         📄 Productietekst
       </button>
 
+<button id="openPDF" class="btn small" style="margin-top:6px; display:none;">
+    📄 Sectie PDF
+</button>
+
 
       <!-- MEDERWERKERS -->
 
@@ -141,6 +145,7 @@
       <div class="radio-group">
         <label><input type="radio" name="mType" value="productie" /> Productie</label>
         <label><input type="radio" name="mType" value="montage" /> Montage</label>
+        <label><input type="radio" name="mType" value="service"> Service</label>
         <label><input type="radio" name="mType" value="vrij" /> Vrij</label>
       </div>
 
@@ -148,15 +153,18 @@
       <!-- Dagdeel -->
       <label class="lbl">Dagdeel</label>
       <div class="radio-group">
+        <label><input type="radio" name="mBlock" value="full" /> Hele dag</label>
         <label><input type="radio" name="mBlock" value="am" /> Ochtend</label>
         <label><input type="radio" name="mBlock" value="pm" /> Middag</label>
-        <label><input type="radio" name="mBlock" value="full" /> Hele dag</label>
       </div>
 
       <!-- URGENT -->
-      <label class="lbl">
-        <input type="checkbox" id="mUrgent"> Urgent ❗
-      </label>
+      <div class="urgent-row">
+        <label class="urgent-label">
+          <input type="checkbox" id="mUrgent">
+          <span>Urgent <span class="urgent-exclaim">❗</span></span>
+        </label>
+      </div>
       
       <!-- VOERTUIG -->
       <div id="vehicleRow">

@@ -260,7 +260,7 @@ body.planner-page:not(.rotated-page) .cell-half:hover .dropzone {
   overflow: hidden;
 }
 
-.item.productie { background: rgba(51,195,111,0.15); outline: 2px solid var(--green); }
+.item.productie { background: #162c22; outline: 2px solid var(--green); }
 .item.montage   { background: rgba(242,199,68,0.15); outline: 2px solid var(--yellow); }
 .item.vrij      { background: rgba(255,90,95,0.12); outline: 2px solid var(--red); }
 
@@ -777,9 +777,11 @@ body.rotated-page .rot-cell .item {
   box-sizing: border-box;
 }
 
-body.rotated-page .rot-cell .item.productie { background: rgba(51,195,111,.15); outline: 2px solid var(--green); }
-body.rotated-page .rot-cell .item.montage   { background: rgba(242,199,68,.15); outline: 2px solid var(--yellow); }
-body.rotated-page .rot-cell .item.vrij      { background: rgba(255,90,95,.12); outline: 2px solid var(--red); }
+body.rotated-page .rot-cell .item.productie { background: #162c22; outline: 2px solid var(--green); }
+body.rotated-page .rot-cell .item.montage   { background: #322d1b; outline: 2px solid var(--yellow); }
+body.rotated-page .rot-cell .item.vrij      { background: #2e1b1e; outline: 2px solid var(--red); }
+.item.service {    background-color: #d865003a !important; border: 2px solid #d86500 !important;color: #fff !important;}
+
 
 /* voertuigregel in daglabel */
 body.rotated-page .rot-veh-line {
@@ -888,3 +890,67 @@ body.rotated-page .rot-cell {
     position: relative !important;
 }
 
+/* Container met medewerkers */
+#mEmpList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-left: 0;
+    padding-left: 0;
+    margin-top: 12px;       /* ruimte boven lijst */
+    margin-bottom: 12px;    /* ruimte onder lijst */
+}
+
+/* Iedere regel (checkbox + naam) */
+#mEmpList label {
+    display: flex;
+    align-items: center;   /* zorgt dat checkbox en tekst op één lijn staan */
+    gap: 10px;             /* afstand tussen checkbox en naam */
+    font-size: 12px;       /* zelfde grootte als rest van modal */
+    color: #ddd;
+    margin: 0;
+}
+
+/* Checkbox mooi uitgelijnd */
+#mEmpList input[type="checkbox"] {
+    width: 18px;
+    height: 12px;
+    margin: 0;
+    transform: translateY(0px); /* voorkomt zweven */
+}
+/* Urgent netjes uitlijnen */
+.urgent-row {
+    margin-top: 20px;
+}
+
+.urgent-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;           /* afstand tussen checkbox en tekst */
+    font-size: 12ox;
+    cursor: pointer;
+}
+
+.urgent-label input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+}
+
+.urgent-exclaim {
+    color: #ff3b63;
+    font-weight: bold;
+}
+.pdf-btn {
+    background: #2d2d2d;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin-top: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.pdf-btn:hover {
+    background: #444;
+}

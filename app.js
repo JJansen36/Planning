@@ -19,7 +19,6 @@ function isAdmin() {
 // ==========================================================
 const $ = (s) => document.querySelector(s);
 
-// Projectsecties laden in modal dropdown
 async function loadSectionOptions(projectId, selectedSectionId = null) {
   const sel = document.getElementById("taskSection");
   if (!sel) return;
@@ -44,13 +43,16 @@ async function loadSectionOptions(projectId, selectedSectionId = null) {
     sel.innerHTML += data
       .map(s => `<option value="${s.id}">${s.section_name}</option>`)
       .join("");
+
     sel.disabled = false;
 
+    // ⭐ herstel dropdown preselectie
     if (selectedSectionId) {
-      sel.value = selectedSectionId;
+      sel.value = String(selectedSectionId);
     }
   }
 }
+
 
 
 async function loadProjects() {
@@ -64,38 +66,6 @@ async function loadProjects() {
   PROJECTS = data || [];
   fillProjectDropdown();
 }  // <-- HIER MISSTE EEN SLUITENDE BRACE
-
-
-
-// SECTIES LADEN IN MODAL
-async function loadSectionOptions(projectId, preselect = null) {
-  const sel = document.getElementById("taskSection");
-  if (!sel) return;
-
-  sel.innerHTML = `<option value="">-- kies sectie --</option>`;
-  sel.disabled = true;
-
-  if (!projectId) return;
-
-  const { data, error } = await sb
-    .from("project_sections")
-    .select("*")
-    .eq("project_id", projectId)
-    .order("section_name", { ascending: true });
-
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  if (data && data.length) {
-    sel.innerHTML += data
-      .map(s => `<option value="${s.id}">${s.section_name}</option>`)
-      .join("");
-
-    sel.disabled = false;
-  }
-}
 
 
 function fillProjectDropdown() {
@@ -548,6 +518,7 @@ async function quickAddProjectViaModal() {
 }
 
 // ==========================================================
+
 //  DATA LADEN / MUTEREN
 // ==========================================================
 async function fetchAll() {
@@ -575,10 +546,12 @@ async function fetchAll() {
     project_sections:assignments_project_section_id_fkey (
       section_name,
       production_text,
+      attachment_url,
       project_id,
       projects (
         number,
-        name
+        name,
+        install_address
       )
     )
   `)
@@ -863,6 +836,10 @@ grid.appendChild(empCell);
         .getElementById("itemTpl")
         .content.cloneNode(true).firstElementChild;
 
+      const proj = a.project_sections?.projects;
+      const sec  = a.project_sections;
+
+
       item.dataset.id = a.id;
       item.dataset.empId = emp.id;   // 🔹 deze regel toevoegen
 
@@ -871,32 +848,60 @@ grid.appendChild(empCell);
 // 🔹 Kleur op basis van type
 item.classList.add(a.type || "productie");
 
-// 🔹 Project + sectie label opbouwen uit join-data
+// -------------------------------
+// Project + sectie + pin
+// -------------------------------
 const top1 = item.querySelector(".top1");
 let label = "";
 
-if (a.project_sections && a.project_sections.projects) {
-  const sec = a.project_sections;
-  const proj = sec.projects;
-  label = `${proj.number || ""} — ${proj.name} • ${sec.section_name}`;
+// projectnummer + naam
+if (proj) {
+  label = `${proj.number || ""} — ${proj.name || ""}`;
 }
 
-// 🔹 Urgent vooraan
-if (a.urgent) label = "❗ " + label;
-
-const clash = hasVehicleClash(a);
-if (clash) {
-  item.classList.add("conflict");
-  const cc = document.createElement("span");
-  cc.textContent = "🚚⚠️";
-  cc.title = "Voertuigconflict op " + clash.date;
-  cc.style.marginRight = "4px";
-  top1.prepend(cc);
+// sectie
+if (sec?.section_name) {
+  label += ` • ${sec.section_name}`;
+}
+// 📄 PDF icoon tonen als sectie een bijlage heeft
+if (sec?.attachment_url) {
+  label += ` <span class="pdf-icon" data-pdf="${sec.attachment_url}">📄</span>`;
 }
 
+// 📍 pin toevoegen
+if (proj?.install_address) {
+  const addr = proj.install_address;
+  const maps = "https://www.google.com/maps?q=" + encodeURIComponent(addr);
+  label += ` <span class="map-pin" data-map="${maps}">📍</span>`;
+}
 
-// Invullen
-top1.textContent = label;
+// urgent
+if (a.urgent) {
+  label = "❗ " + label;
+}
+
+// HTML zetten
+top1.innerHTML = label;
+
+// pin klikbaar
+top1.querySelectorAll(".map-pin").forEach(pin => {
+  pin.style.cursor = "pointer";
+  pin.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.open(pin.dataset.map, "_blank");
+  });
+});
+
+// pdf klikbaar
+top1.querySelectorAll(".pdf-icon").forEach(pdf => {
+  pdf.style.cursor = "pointer";
+  pdf.addEventListener("click", (e) => {
+    e.stopPropagation();
+    window.open(pdf.dataset.pdf, "_blank");
+  });
+});
+
+
 item.querySelector(".top2").textContent = "";
 
 
@@ -924,12 +929,20 @@ item.querySelector(".top2").textContent = "";
 
       item.querySelector(".meta").textContent = parts.join(" • ");
 
-      // klikken om te bewerken
-      (function (rec) {
-        item.addEventListener("click", function () {
-          openTaskModal(rec, { readonly: !isAdmin() });
-        });
-      })(a);
+(function (rec) {
+item.addEventListener("click", function (e) {
+
+  // 🔥 voorkom modal-klik wanneer je op de pin klikt
+  if (e.target.closest(".map-pin")) {
+    return; 
+  }
+
+  openTaskModal(rec, { readonly: !isAdmin() });
+});
+
+
+})(a);
+
 
       // delete knop
       const delBtn = item.querySelector(".x");
@@ -973,16 +986,32 @@ item.querySelector(".top2").textContent = "";
       }
 
 
-      // plaats in ochtend/middag/hele dag
-      const blk = a.block || blockFromTimes(a.start_time, a.end_time);
-      if (blk === "full") {
-        item.classList.add("full-day");
-        inner.appendChild(item);
-      } else if (blk === "pm") {
-        pmContainer.appendChild(item);
-      } else {
-        amContainer.appendChild(item);
-      }
+
+// plaats in ochtend/middag/hele dag
+const blk = a.block || blockFromTimes(a.start_time, a.end_time);
+
+if (blk === "full") {
+    // HELE DAG = twee items
+    const clone = item.cloneNode(true);
+
+    // Klik-handler kopiëren
+    clone.addEventListener("click", (e) => {
+        if (e.target.closest(".map-pin")) return;
+        e.stopPropagation();
+        openTaskModal(a, { readonly: !isAdmin() });
+    });
+
+    amContainer.appendChild(item);
+    pmContainer.appendChild(clone);
+}
+else if (blk === "pm") {
+    pmContainer.appendChild(item);
+}
+else {
+    amContainer.appendChild(item);  // standaard = ochtend
+}
+
+
     }
 
 
@@ -1217,6 +1246,8 @@ function renderEmployeeCheckboxes(selected = []) {
   });
 }
 
+
+
 // ==========================================================
 //  MODAL OPENEN / SLUITEN
 // ==========================================================
@@ -1332,6 +1363,19 @@ if (btn) {
 }
 
 
+// PDF tonen indien sectie een bijlage heeft
+const pdfBtn = document.getElementById("openPDF");
+const pdfUrl = rec.project_sections?.attachment_url;
+
+if (pdfBtn) {
+    if (pdfUrl) {
+        pdfBtn.style.display = "";
+        pdfBtn.onclick = () => window.open(pdfUrl, "_blank");
+    } else {
+        pdfBtn.style.display = "none";
+    }
+}
+
   // Modal tonen
   document.getElementById("taskModal").hidden = false;
 
@@ -1367,6 +1411,23 @@ if (!isAdmin()) {
 
     const proj = rec.project_sections?.projects;
     const sec  = rec.project_sections;
+
+        // PDF bij sectie
+    const pdfWrap = document.getElementById("sectionPdfWrap");
+    if (pdfWrap) {
+        const url = sec?.attachment_url;
+        if (url) {
+            pdfWrap.innerHTML = `
+                <a href="${url}" target="_blank" class="btn small" style="margin-top:6px;">
+                    📄 Open sectie PDF
+                </a>
+            `;
+            pdfWrap.style.display = "block";
+        } else {
+            pdfWrap.style.display = "none";
+        }
+    }
+
 
     document.getElementById("roProject").textContent =
         proj ? `${proj.number} – ${proj.name}` : "(geen project)";
@@ -1545,11 +1606,11 @@ async function handleSaveClick() {
   rec.block = blk;
 
   // voertuig bij montage
-  if (rec.type === "montage") {
+if (rec.type === "montage" || rec.type === "service") {
     rec.vehicle = (vehRadio && vehRadio.value) || "nvt";
-  } else {
+} else {
     rec.vehicle = "nvt";
-  }
+}
 
   // dubbel-boekingscheck voertuig
   if (rec.type === "montage" && rec.vehicle && rec.vehicle !== "nvt") {

@@ -156,6 +156,7 @@ function makeHeader(txt) {
 function addRotatedCell(grid, emp, day) {
     const iso = isoDateStr(day);
 
+
     const wrap = document.createElement("div");
     wrap.className = "rot-cell";
 
@@ -163,11 +164,12 @@ function addRotatedCell(grid, emp, day) {
     const isWeekend = (day.getDay() === 0 || day.getDay() === 6);
     if (isWeekend) wrap.classList.add("weekend");
 
-    // Vandaag → markeer ALLEEN de eerste medewerker kolom
-    if (iso === TODAY_ISO && emp.id === cache.employees[0].id) {
+
+    // Vandaag → markeer ALLE medewerker kolommen van deze dag
+    if (iso === TODAY_ISO) {
         wrap.classList.add("today");
-        wrap.id = "todayCell";
     }
+
 
     // AM / PM containers
     const am = document.createElement("div");
@@ -185,81 +187,166 @@ function addRotatedCell(grid, emp, day) {
     wrap.appendChild(am);
     wrap.appendChild(pm);
 
-    // TAKEN ophalen
-    const tasks = cache.assignments.filter(a =>
-        (a.employees?.includes(emp.id) || a.employee_id === emp.id) &&
-        iso >= a.start_date &&
-        iso <= a.end_date
-    );
+// TAKEN ophalen
+const tasks = cache.assignments.filter(a =>
+    (a.employees?.includes(emp.id) || a.employee_id === emp.id) &&
+    iso >= a.start_date &&
+    iso <= a.end_date
+);
 
-    tasks.forEach(a => {
-        const it = document.getElementById("rotItemTpl")
-            .content.cloneNode(true).firstElementChild;
+tasks.forEach(a => {
+    const it = document.getElementById("rotItemTpl")
+        .content.cloneNode(true).firstElementChild;
 
-        // LOVD markering
-        let isLOVD = false;
-        const empObj = cache.employees.find(e => e.id === emp.id);
-        if (empObj && empObj.name.toLowerCase().includes("lovd")) {
-            isLOVD = true;
-        }
+    // LOVD markering
+    let isLOVD = false;
+    const empObj = cache.employees.find(e => e.id === emp.id);
+    if (empObj?.name.toLowerCase().includes("lovd")) isLOVD = true;
 
-        if (a.employees?.length > 0) {
-            for (const eid of a.employees) {
-                const em = cache.employees.find(e => e.id === eid);
-                if (em && em.name.toLowerCase().includes("lovd")) {
-                    isLOVD = true;
-                    break;
-                }
+    if (a.employees?.length) {
+        for (const eid of a.employees) {
+            const em = cache.employees.find(e => e.id === eid);
+            if (em?.name.toLowerCase().includes("lovd")) {
+                isLOVD = true;
+                break;
             }
         }
+    }
+    if (isLOVD) it.classList.add("lovd");
 
-        if (isLOVD) it.classList.add("lovd");
+    it.draggable = true;
+    it.dataset.id = a.id;
+    it.dataset.empId = emp.id;
+    it.dataset.vehicle = a.vehicle || "";
+    it.classList.add(a.type);
 
-        it.draggable = true;
-        it.dataset.id = a.id;
-        it.dataset.empId = emp.id;
+    const proj = a.project_sections?.projects;
+    const sec = a.project_sections;
 
-        it.addEventListener("click", (e) => {
+// PROJECTLABEL + SECTIE + PDF + PIN
+const top1 = it.querySelector(".top1");
+let label = proj ? `${proj.number} ${proj.name}` : "";
+
+// ➕ Sectie
+if (sec?.section_name) {
+    label += ` • ${sec.section_name}`;
+}
+
+// ➕ PDF ICON
+if (sec?.attachment_url) {
+    label += ` <span class="pdf-icon" data-pdf="${sec.attachment_url}">📄</span>`;
+}
+
+// zet HTML
+top1.innerHTML = label;
+
+// SECTIE (meta)
+const meta = it.querySelector(".meta");
+meta.textContent = sec?.section_name || "";
+
+
+// 📍 GOOGLE MAPS PIN
+if (proj?.install_address) {
+    const maps = "https://www.google.com/maps?q=" + encodeURIComponent(proj.install_address);
+    it.dataset.map = maps;
+
+    const pin = document.createElement("span");
+    pin.className = "map-pin";
+    pin.dataset.map = maps;
+    pin.textContent = " 📍";
+    top1.appendChild(pin);
+}
+
+// 📄 PDF KLIKHANDLER
+top1.querySelectorAll(".pdf-icon").forEach(pdf => {
+    pdf.style.cursor = "pointer";
+    pdf.addEventListener("click", (e) => {
+        e.stopPropagation();
+        window.open(pdf.dataset.pdf, "_blank");
+    });
+});
+
+
+// CLICK HANDLER (PDF → pin → modal)
+it.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    // 📄 PDF
+    const pdf = e.target.closest(".pdf-icon");
+    if (pdf) {
+        window.open(pdf.dataset.pdf, "_blank");
+        return;
+    }
+
+    // 📍 PIN
+    const pin = e.target.closest(".map-pin");
+    if (pin) {
+        window.open(pin.dataset.map, "_blank");
+        return;
+    }
+
+    // MODAL
+    openTaskModal(a, { readonly: false });
+});
+
+
+    // NOTITIES
+    const noteEl = it.querySelector(".note");
+    if (noteEl) {
+        if (a.notes?.trim()) {
+            noteEl.textContent = a.notes;
+            noteEl.style.display = "block";
+        } else {
+            noteEl.style.display = "none";
+        }
+    }
+
+    // URGENT
+    if (a.urgent) {
+        it.classList.add("urgent");
+        if (top1) top1.classList.add("urgent");
+    }
+
+    // AM / PM / FULL
+    const blk = a.block || blockFromTimes(a.start_time, a.end_time);
+
+    if (blk === "am") {
+        am.appendChild(it);
+    } else if (blk === "pm") {
+        pm.appendChild(it);
+    } else {
+        // HELE DAG → dubbele taak (AM+PM)
+        const itAM = it.cloneNode(true);
+        const itPM = it.cloneNode(true);
+
+        // AM click fix bij clone
+        itAM.addEventListener("click", (e) => {
             e.stopPropagation();
+            if (e.target.closest(".map-pin")) {
+                window.open(e.target.closest(".map-pin").dataset.map, "_blank");
+                return;
+            }
             openTaskModal(a, { readonly: false });
         });
 
-        it.dataset.vehicle = a.vehicle || "";
-        it.classList.add(a.type);
-
-        const proj = a.project_sections?.projects;
-        const sec = a.project_sections;
-
-        const top1 = it.querySelector(".top1");
-        top1.textContent = proj ? `${proj.number} ${proj.name}` : "";
-
-        const meta = it.querySelector(".meta");
-        meta.textContent = sec?.section_name || "";
-
-        const noteEl = it.querySelector(".note");
-        if (noteEl) {
-            if (a.note?.trim()) {
-                noteEl.textContent = a.note;
-                noteEl.style.display = "block";
-            } else {
-                noteEl.style.display = "none";
+        // PM click fix bij clone
+        itPM.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (e.target.closest(".map-pin")) {
+                window.open(e.target.closest(".map-pin").dataset.map, "_blank");
+                return;
             }
-        }
+            openTaskModal(a, { readonly: false });
+        });
 
-        if (a.urgent) {
-            it.classList.add("urgent");
-            const t1 = it.querySelector(".top1");
-            if (t1) t1.classList.add("urgent");
-        }
+        am.appendChild(itAM);
+        pm.appendChild(itPM);
+    }
+});
 
-        const blk = a.block || blockFromTimes(a.start_time, a.end_time);
-        if (blk === "pm") pm.appendChild(it);
-        else if (blk === "am") am.appendChild(it);
-        else {
-            it.classList.add("full-block");
-            am.appendChild(it);
-        }
-    });
+
+
+
 
     // Nieuwe taak toevoegen
     [am, pm].forEach(part => {

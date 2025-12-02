@@ -73,8 +73,10 @@ function renderProjectList() {
     div.className = "project-row";
     div.innerHTML = `
       <strong>${p.number} — ${p.name}</strong>
+      <button class="btn small" onclick="editProject(${p.id})">Wijzigen</button>
       <button class="btn small" onclick="setProject(${p.id})">Beheer secties</button>
     `;
+
     list.appendChild(div);
   });
 }
@@ -100,13 +102,25 @@ function renderSectionList() {
 
   ul.innerHTML = SECTIONS.map(
     (s) => `
-    <li>
-      ${s.section_name}
+    <li class="section-item">
+      <span>${s.section_name}</span>
+
+      <button class="btn small uploadPdfBtn" data-id="${s.id}">
+        📄 PDF
+      </button>
+
+      ${
+        s.attachment_url
+          ? `<a class="btn small" href="${s.attachment_url}" target="_blank">Open</a>`
+          : ""
+      }
+
       <button data-id="${s.id}" class="deleteSec btn small danger">X</button>
     </li>
   `
   ).join("");
 
+  // delete knoppen
   ul.querySelectorAll(".deleteSec").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm("Sectie verwijderen? Taken kunnen los raken!")) return;
@@ -114,7 +128,13 @@ function renderSectionList() {
       await loadSectionsForCurrent();
     });
   });
+
+  // upload knoppen
+  ul.querySelectorAll(".uploadPdfBtn").forEach((btn) => {
+    btn.addEventListener("click", () => uploadPdfForSection(btn.dataset.id));
+  });
 }
+
 
 function renderEmployeeList() {
   const ul = $("#empList");
@@ -155,23 +175,70 @@ function renderEmployeeList() {
   });
 }
 
+function editProject(id) {
+  const p = PROJECTS.find(x => x.id === id);
+  if (!p) return;
+
+  CURRENT_PROJECT_ID = id;
+
+  $("#projNumber").value = p.number || "";
+  $("#projName").value = p.name || "";
+  $("#projCustomer").value = p.customer || "";
+  $("#mInstallAddress").value = p.install_address || "";
+
+  // knop tekst veranderen (optioneel)
+  $("#addProjBtn").textContent = "Project opslaan";
+}
+
+
 // --------------------
 // EVENTS
 // --------------------
 function initEvents() {
-  $("#addProjBtn").addEventListener("click", async () => {
-    const number = $("#projNumber").value.trim();
-    const name = $("#projName").value.trim();
-    const customer = $("#projCustomer").value.trim();
+$("#addProjBtn").addEventListener("click", async () => {
+  const number = $("#projNumber").value.trim();
+  const name = $("#projName").value.trim();
+  const customer = $("#projCustomer").value.trim();
+  const install_address = $("#mInstallAddress").value.trim();
 
-    if (!name) return alert("Naam verplicht");
+  if (!name) return alert("Naam verplicht");
 
-    await sb.from("projects").insert({ number, name, customer });
-    $("#projNumber").value = "";
-    $("#projName").value = "";
-    $("#projCustomer").value = "";
-    await loadProjects();
-  });
+  if (CURRENT_PROJECT_ID) {
+    // ► UPDATE PROJECT
+    const { error } = await sb
+      .from("projects")
+      .update({ number, name, customer, install_address })
+      .eq("id", CURRENT_PROJECT_ID);
+
+    if (error) {
+      alert("Opslaan mislukt: " + error.message);
+      return;
+    }
+
+  } else {
+    // ► NIEUW PROJECT
+    const { error } = await sb
+      .from("projects")
+      .insert({ number, name, customer, install_address });
+
+    if (error) {
+      alert("Toevoegen mislukt: " + error.message);
+      return;
+    }
+  }
+
+  // reset velden
+  $("#projNumber").value = "";
+  $("#projName").value = "";
+  $("#projCustomer").value = "";
+  $("#mInstallAddress").value = "";
+  $("#addProjBtn").textContent = "Project toevoegen";
+
+  CURRENT_PROJECT_ID = null;
+
+  await loadProjects();
+});
+
 
   $("#addSectionBtn").addEventListener("click", async () => {
     const name = $("#sectionName").value.trim();
@@ -195,4 +262,41 @@ function initEvents() {
     $("#empName").value = "";
     await loadEmployees();
   });
+}
+async function uploadPdfForSection(sectionId) {
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.accept = "application/pdf";
+
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const fileName = `section-${sectionId}-${Date.now()}.pdf`;
+
+    // upload naar supabase storage
+    const { data, error } = await sb.storage
+      .from("attachments")
+      .upload(fileName, file);
+
+    if (error) {
+      alert("Upload mislukt: " + error.message);
+      return;
+    }
+
+    // publieke URL ophalen
+    const { data: urlData } = sb.storage
+      .from("attachments")
+      .getPublicUrl(fileName);
+
+    // URL opslaan in sectie record
+    await sb.from("project_sections")
+      .update({ attachment_url: urlData.publicUrl })
+      .eq("id", sectionId);
+
+    alert("PDF opgeslagen!");
+    loadSectionsForCurrent();
+  };
+
+  fileInput.click();
 }
