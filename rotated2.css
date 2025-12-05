@@ -24,6 +24,7 @@ html, body {
   font-family: "LOVD", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   overflow-x: auto;
   overflow-y: auto;
+  overflow: hidden; /* zodat #rotScroll de scroll krijgt */
 }
 
 /* ----------------------------------
@@ -872,7 +873,7 @@ body.rotated-page .rot-head-row {
 .prodtext-backdrop[hidden] {
     display: none !important;
     opacity: 0 !important;
-    pointer-events: none !important;
+
 }
 
 #prodTextModal {
@@ -1240,4 +1241,162 @@ body.rotated-page .rot-head-row {
 }
 .switch-view:hover {
   background: #f3f3f3;
+}
+.rot-am, .rot-pm {
+    position: relative;
+    z-index: 10;       /* cells bovenaan */
+}
+
+.item {
+    position: relative;
+    z-index: 20;       /* item boven cell maar NIET hoger dan modal */
+    pointer-events: auto !important;
+}
+/* Zorg dat de header altijd bovenaan blijft */
+#rotHead, 
+.topbar, 
+header {
+    position: relative;
+    z-index: 3000;  /* hoger dan taken */
+}
+
+/* Taken mogen niet hoger komen dan de header */
+.item {
+    z-index: 100 !important;   /* lager dan header, hoger dan cel */
+    position: relative;
+}
+
+/* AM/PM cellen */
+.rot-part {
+    position: relative;
+    z-index: 10;
+}
+
+/* Sticky header goed zichtbaar en functioneel */
+#rotHead {
+    position: sticky;
+    top: 0;
+    background: var(--bg, #ffffff); /* vul je eigen kleur in */
+    z-index: 3000; /* boven taken */
+}
+
+/* Bovenbalk */
+.topbar, header {
+    position: sticky;
+    top: 0;
+    z-index: 4000; /* hoger dan #rotHead */
+}
+
+/* Taken */
+.item {
+    position: relative;
+    z-index: 100 !important; /* onder header, boven cellen */
+}
+
+/* Cellen */
+.rot-part {
+    position: relative;
+    z-index: 1;
+}
+/* Uitlijning voor alle radio-groepen */
+.radio-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;      /* <<< ALLES LINKS */
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* Zorg dat radio's en hun labels exact op één lijn staan */
+.radio-list label {
+    white-space: nowrap;     /* voorkomt afbreken */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Consistente stijl voor form rows */
+.form-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+.form-row > label {
+  font-weight: 500;
+  margin-bottom: 4px;
+  font-size: 18px;
+}
+
+/* Input-regel (voor twee kolommen zoals datums) */
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row input,
+.input-row select {
+  flex: 1;
+}
+.form-row.urgent-row,
+.form-row .urgent-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.urgent-label span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+/* Scrollcontainer voor planner */
+#rotScroll {
+    height: calc(100vh - 70px); /* topbar aftrekken */
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Medewerkers-balk sticky */
+#rotHead {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg);
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+.rot-veh-line {
+    background: #333;
+    color: #fff;
+    padding: 2px 6px;
+    margin-top: 2px;
+    border-radius: 6px;
+    font-size: 11px;
+    width: fit-content;
+}
+
+.rot-veh-line {
+    background: #333;
+    color: #fff;
+    padding: 2px 6px;
+    margin-top: 2px;
+    border-radius: 6px;
+    font-size: 11px;
+    width: fit-content;
+}
+
+.rot-veh-line.private {
+    background: #c79aff;
+    color: #4a0072;
+    border: 1px solid #a76be7;
+}
+.item .note {
+    display: block !important;
+    font-size: 14px;
+    line-height: 1.2;
+    margin-top: 2px;
+    color: var(--text-muted, #ccc);
+    white-space: nowrap;
 }

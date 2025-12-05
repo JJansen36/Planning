@@ -43,6 +43,19 @@ async function requireAuth() {
   }
 
   window.__IS_ADMIN = IS_ADMIN;
+
+
+  // ➜ Redirect voor medewerkers
+  if (!IS_ADMIN) {
+    const current = window.location.pathname;
+
+    // voorkom redirect-loop
+    if (!current.includes("rotated2.html") && !current.includes("login.html")) {
+      window.location.href = "rotated2.html";
+      return null;
+    }
+  }
+
   return session;
 }
 

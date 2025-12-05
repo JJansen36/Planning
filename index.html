@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="nl">
+<html lang="nl" class="theme-dark">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,9 +10,7 @@
 
   <link rel="stylesheet" href="styles.css" />
 </head>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth.js"></script>
-  <script src="app.js"></script>
+
 <body class="planner-page">
 
 <header class="topbar">
@@ -31,14 +30,17 @@
     <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
       <a class="btn ghost admin-only-link" href="overview.html">
     Weekoverzicht 2 maanden</a>
-    <a class="btn" href="rotated.html">Weergave</a>
+    <a class="btn" href="rotated2.html">Weekplanning</a>
     <a class="btn" href="admin.html">Beheer</a>
-    <button id="exportBtn" class="btn ghost">⬇️ Export</button>
+    <label class="theme-switch">
+        <input type="checkbox" id="themeToggle">
+        <span class="slider"></span>
+      </label>
     <button id="logoutBtn">Uitloggen</button>
   </div>
 </header>
 
-<main class="layout">
+<main class="planner-layout">
   <section class="board">
     <div class="grid-wrap">
       <div id="gridWeek1" class="grid"></div>
@@ -210,6 +212,8 @@
   </div>
 </div>
 
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js" defer></script>
+    <script src="app.js" defer></script>
 </body>
 </html>

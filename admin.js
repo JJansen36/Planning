@@ -1,4 +1,6 @@
-// ADMIN.JS — LOVD beheer
+// ======================================================
+// ADMIN.JS — LOVD BEHEER
+// ======================================================
 
 let PROJECTS = [];
 let SECTIONS = [];
@@ -7,20 +9,43 @@ let CURRENT_PROJECT_ID = null;
 
 const $ = (s) => document.querySelector(s);
 
+// ======================================================
 // INIT
+// ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
   const session = await requireAuth();
   if (!session) return;
 
   setupLogout();
   initEvents();
+
   await loadProjects();
   await loadEmployees();
 });
 
-// --------------------
-// DATA LOADERS
-// --------------------
+// live zoekfunctie
+document.getElementById("projectSearch")?.addEventListener("input", () => {
+  renderProjectList();
+});
+
+// ======================================================
+// FILTER PROJECTEN
+// ======================================================
+function filterProjects(query) {
+  const q = (query || "").toLowerCase().trim();
+  if (!q) return PROJECTS;
+
+  return PROJECTS.filter((p) =>
+    (p.number || "").toLowerCase().includes(q) ||
+    (p.name || "").toLowerCase().includes(q) ||
+    (p.customer || "").toLowerCase().includes(q) ||
+    (p.install_address || "").toLowerCase().includes(q)
+  );
+}
+
+// ======================================================
+// LOADERS
+// ======================================================
 async function loadProjects() {
   const { data, error } = await sb
     .from("projects")
@@ -28,7 +53,6 @@ async function loadProjects() {
     .order("number", { ascending: true });
 
   if (error) return console.error(error);
-
   PROJECTS = data || [];
   renderProjectList();
 
@@ -37,6 +61,7 @@ async function loadProjects() {
 
 async function loadSectionsForCurrent() {
   if (!CURRENT_PROJECT_ID) return;
+
   const { data, error } = await sb
     .from("project_sections")
     .select("*")
@@ -57,40 +82,86 @@ async function loadEmployees() {
     .order("name", { ascending: true });
 
   if (error) return console.error(error);
+
   EMPLOYEES = data || [];
   renderEmployeeList();
 }
 
-// --------------------
-// UI RENDERING
-// --------------------
+// ======================================================
+// PROJECT LIJST
+// ======================================================
 function renderProjectList() {
   const list = $("#projectList");
+  if (!list) return;
+
+  const q = $("#projectSearch")?.value || "";
+  const projects = filterProjects(q);
+
   list.innerHTML = "";
 
-  PROJECTS.forEach((p) => {
+  projects.forEach((p) => {
     const div = document.createElement("div");
     div.className = "project-row";
+
     div.innerHTML = `
-      <strong>${p.number} — ${p.name}</strong>
-      <button class="btn small" onclick="editProject(${p.id})">Wijzigen</button>
-      <button class="btn small" onclick="setProject(${p.id})">Beheer secties</button>
+    <div class="project-row-main">
+        <div class="project-row-title">
+          <span class="proj-number">${p.number || ""}</span>
+          <span class="proj-name">${p.name || ""}</span>
+        </div>
+
+        ${
+          (p.project_sections || []).length
+            ? `<ul class="section-list">
+                ${p.project_sections
+                  .map(
+                    s => `
+                      <li class="section-mini">
+                        <span class="mini-title">• ${s.section_name}</span>
+
+                        <span class="mini-actions">
+                          ${s.production_text ? `<button class="btn tiny mini-prod" data-id="${s.id}">📝</button>` : ""}
+                          ${s.attachment_url ? `<a class="btn tiny mini-pdf" href="${s.attachment_url}" target="_blank">📄</a>` : ""}
+                        </span>
+                      </li>`
+                  )
+                  .join("")}
+              </ul>`
+            : ""
+        }
+      </div>
+
+      <div class="project-row-actions">
+        <button class="btn small editCombined" data-id="${p.id}">✏️ </button>
+      </div>
     `;
 
     list.appendChild(div);
   });
+
+  // Project bewerken
+  list.querySelectorAll(".editCombined").forEach(btn => {
+    btn.addEventListener("click", () => openProjectEditor(Number(btn.dataset.id)));
+  });
+
+  // Mini-productietekst openen
+  list.querySelectorAll(".mini-prod").forEach(btn => {
+    btn.addEventListener("click", () => openProdTextModal(Number(btn.dataset.id)));
+  });
 }
 
+// ======================================================
+// SECTIES
+// ======================================================
 function setProject(id) {
   CURRENT_PROJECT_ID = id;
-  loadSectionsForCurrent();
   $("#sectionBox").hidden = false;
+  loadSectionsForCurrent();
 }
 
 function renderSectionList() {
   const ul = $("#sectionList");
   const header = $("#sectionHeader");
-
   const proj = PROJECTS.find((p) => p.id === CURRENT_PROJECT_ID);
 
   header.textContent = `Secties bij: ${proj?.number || ""} — ${proj?.name || ""}`;
@@ -100,42 +171,85 @@ function renderSectionList() {
     return;
   }
 
-  ul.innerHTML = SECTIONS.map(
-    (s) => `
+  ul.innerHTML = SECTIONS.map(s => `
     <li class="section-item">
-      <span>${s.section_name}</span>
-
-      <button class="btn small uploadPdfBtn" data-id="${s.id}">
-        📄 PDF
-      </button>
-
-      ${
-        s.attachment_url
-          ? `<a class="btn small" href="${s.attachment_url}" target="_blank">Open</a>`
-          : ""
-      }
-
-      <button data-id="${s.id}" class="deleteSec btn small danger">X</button>
+      <div class="section-line">
+        <span class="section-title">${s.section_name}</span>
+        <div class="section-actions">
+          <button class="btn tiny editProdTextBtn" data-id="${s.id}">📝</button>
+          <button class="btn tiny uploadPdfBtn" data-id="${s.id}">📄</button>
+          ${s.attachment_url ? `<a class="btn tiny" href="${s.attachment_url}" target="_blank">Open</a>` : ""}
+          <button class="btn tiny danger deleteSec" data-id="${s.id}">✕</button>
+        </div>
+      </div>
     </li>
-  `
-  ).join("");
+  `).join("");
 
-  // delete knoppen
-  ul.querySelectorAll(".deleteSec").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (!confirm("Sectie verwijderen? Taken kunnen los raken!")) return;
-      await sb.from("project_sections").delete().eq("id", btn.dataset.id);
-      await loadSectionsForCurrent();
+  // Selecteren van een sectie
+  ul.querySelectorAll(".section-item").forEach(li => {
+    li.addEventListener("click", () => {
+      const id = li.querySelector(".editProdTextBtn")?.dataset.id;
+      window.__CURRENT_SECTION_ID = Number(id);
+
+      ul.querySelectorAll(".section-item").forEach(el => {
+        el.style.background = "transparent";
+      });
+      li.style.background = "rgba(255,255,255,0.05)";
     });
   });
 
-  // upload knoppen
-  ul.querySelectorAll(".uploadPdfBtn").forEach((btn) => {
+  // Sectie verwijderen
+  ul.querySelectorAll(".deleteSec").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Sectie verwijderen? Taken kunnen los raken!")) return;
+      await sb.from("project_sections").delete().eq("id", btn.dataset.id);
+      loadSectionsForCurrent();
+    });
+  });
+
+  // PDF upload
+  ul.querySelectorAll(".uploadPdfBtn").forEach(btn => {
     btn.addEventListener("click", () => uploadPdfForSection(btn.dataset.id));
+  });
+
+  // Productietekst openen
+  ul.querySelectorAll(".editProdTextBtn").forEach(btn => {
+    btn.addEventListener("click", () => openProdTextModal(Number(btn.dataset.id)));
   });
 }
 
+// ======================================================
+// PRODUCTIETEKST MODAL OPENEN
+// ======================================================
+function openProdTextModal(secId) {
+  window.__CURRENT_SECTION_ID = secId;
 
+  sb.from("project_sections")
+    .select("section_name, production_text")
+    .eq("id", secId)
+    .single()
+    .then(({ data, error }) => {
+      if (error || !data) {
+        alert("Kan productietekst niet laden.");
+        return;
+      }
+
+      document.getElementById("prodModalTitle").textContent =
+        "Productietekst — " + data.section_name;
+
+      document.getElementById("prodTextEditor").value =
+        data.production_text || "";
+
+      document.getElementById("prodTextModal").hidden = false;
+    });
+}
+
+
+
+
+// ======================================================
+// MEDEWERKERS
+// ======================================================
 function renderEmployeeList() {
   const ul = $("#empList");
   if (!ul) return;
@@ -147,99 +261,98 @@ function renderEmployeeList() {
 
   ul.innerHTML = EMPLOYEES.map(
     (e) => `
-    <li>
-      ${e.name}
-      <label><input type="checkbox" class="toggleShow" data-id="${e.id}"
-        ${e.show_in_calendar !== false ? "checked" : ""}> tonen</label>
-      <button data-id="${e.id}" class="deleteEmp btn small danger">X</button>
-    </li>
-  `
+      <li class="employee-row">
+        <label class="emp-left">
+          <input type="checkbox" class="toggleShow" data-id="${e.id}"
+            ${e.show_in_calendar !== false ? "checked" : ""}>
+          <span class="emp-name">${e.name}</span>
+        </label>
+
+        <button data-id="${e.id}" class="deleteEmp btn tiny danger">✕</button>
+      </li>
+    `
   ).join("");
 
-  ul.querySelectorAll(".toggleShow").forEach((chk) => {
+  ul.querySelectorAll(".toggleShow").forEach((chk) =>
     chk.addEventListener("change", async () => {
       await sb
         .from("employees")
         .update({ show_in_calendar: chk.checked })
         .eq("id", chk.dataset.id);
       loadEmployees();
-    });
-  });
+    })
+  );
 
-  ul.querySelectorAll(".deleteEmp").forEach((btn) => {
+  ul.querySelectorAll(".deleteEmp").forEach((btn) =>
     btn.addEventListener("click", async () => {
       if (!confirm("Medewerker verwijderen?")) return;
       await sb.from("employees").delete().eq("id", btn.dataset.id);
       loadEmployees();
-    });
-  });
+    })
+  );
 }
 
+// ======================================================
+// PROJECT BEWERKEN
+// ======================================================
 function editProject(id) {
-  const p = PROJECTS.find(x => x.id === id);
+  const p = PROJECTS.find((x) => x.id === id);
   if (!p) return;
 
   CURRENT_PROJECT_ID = id;
-
   $("#projNumber").value = p.number || "";
   $("#projName").value = p.name || "";
   $("#projCustomer").value = p.customer || "";
   $("#mInstallAddress").value = p.install_address || "";
 
-  // knop tekst veranderen (optioneel)
   $("#addProjBtn").textContent = "Project opslaan";
 }
 
+function openProjectEditor(id) {
+  editProject(id);
+  setProject(id);
+}
 
-// --------------------
+// ======================================================
 // EVENTS
-// --------------------
+// ======================================================
 function initEvents() {
-$("#addProjBtn").addEventListener("click", async () => {
-  const number = $("#projNumber").value.trim();
-  const name = $("#projName").value.trim();
-  const customer = $("#projCustomer").value.trim();
-  const install_address = $("#mInstallAddress").value.trim();
 
-  if (!name) return alert("Naam verplicht");
+  // project toevoegen / opslaan
+  $("#addProjBtn").addEventListener("click", async () => {
+    const number = $("#projNumber").value.trim();
+    const name = $("#projName").value.trim();
+    const customer = $("#projCustomer").value.trim();
+    const install_address = $("#mInstallAddress").value.trim();
 
-  if (CURRENT_PROJECT_ID) {
-    // ► UPDATE PROJECT
-    const { error } = await sb
-      .from("projects")
-      .update({ number, name, customer, install_address })
-      .eq("id", CURRENT_PROJECT_ID);
+    if (!name) return alert("Naam verplicht");
 
-    if (error) {
-      alert("Opslaan mislukt: " + error.message);
-      return;
+    if (CURRENT_PROJECT_ID) {
+      await sb
+        .from("projects")
+        .update({ number, name, customer, install_address })
+        .eq("id", CURRENT_PROJECT_ID);
+    } else {
+      await sb.from("projects").insert({
+        number,
+        name,
+        customer,
+        install_address,
+      });
     }
 
-  } else {
-    // ► NIEUW PROJECT
-    const { error } = await sb
-      .from("projects")
-      .insert({ number, name, customer, install_address });
+    $("#projNumber").value = "";
+    $("#projName").value = "";
+    $("#projCustomer").value = "";
+    $("#mInstallAddress").value = "";
 
-    if (error) {
-      alert("Toevoegen mislukt: " + error.message);
-      return;
-    }
-  }
+    $("#addProjBtn").textContent = "Project toevoegen";
+    CURRENT_PROJECT_ID = null;
 
-  // reset velden
-  $("#projNumber").value = "";
-  $("#projName").value = "";
-  $("#projCustomer").value = "";
-  $("#mInstallAddress").value = "";
-  $("#addProjBtn").textContent = "Project toevoegen";
+    await loadProjects();
+  });
 
-  CURRENT_PROJECT_ID = null;
-
-  await loadProjects();
-});
-
-
+  // nieuwe sectie
   $("#addSectionBtn").addEventListener("click", async () => {
     const name = $("#sectionName").value.trim();
     if (!name || !CURRENT_PROJECT_ID) return;
@@ -250,53 +363,47 @@ $("#addProjBtn").addEventListener("click", async () => {
     });
 
     $("#sectionName").value = "";
-    await loadSectionsForCurrent();
+    loadSectionsForCurrent();
   });
 
+  // medewerker toevoegen
   $("#addEmpBtn").addEventListener("click", async () => {
     const name = $("#empName").value.trim();
-    const show = $("#empShow").checked;
+    const show = $("#empShow")?.checked;
+
+    if (!name) return;
 
     await sb.from("employees").insert({ name, show_in_calendar: show });
-
     $("#empName").value = "";
-    await loadEmployees();
+
+    loadEmployees();
   });
-}
-async function uploadPdfForSection(sectionId) {
-  const fileInput = document.createElement("input");
-  fileInput.type = "file";
-  fileInput.accept = "application/pdf";
 
-  fileInput.onchange = async () => {
-    const file = fileInput.files[0];
-    if (!file) return;
+  document.getElementById("prodSave")?.addEventListener("click", async () => {
+    const id = window.__CURRENT_SECTION_ID;
+    const text = document.getElementById("prodTextEditor").value;
 
-    const fileName = `section-${sectionId}-${Date.now()}.pdf`;
-
-    // upload naar supabase storage
-    const { data, error } = await sb.storage
-      .from("attachments")
-      .upload(fileName, file);
+    const { error } = await sb
+      .from("project_sections")
+      .update({ production_text: text })
+      .eq("id", id);
 
     if (error) {
-      alert("Upload mislukt: " + error.message);
+      alert("Opslaan mislukt!");
       return;
     }
 
-    // publieke URL ophalen
-    const { data: urlData } = sb.storage
-      .from("attachments")
-      .getPublicUrl(fileName);
+    document.getElementById("prodTextModal").hidden = true;
 
-    // URL opslaan in sectie record
-    await sb.from("project_sections")
-      .update({ attachment_url: urlData.publicUrl })
-      .eq("id", sectionId);
-
-    alert("PDF opgeslagen!");
+    // lijst opnieuw laden zodat 📝 icoontje klopt
     loadSectionsForCurrent();
-  };
+    loadProjects();
+  });
 
-  fileInput.click();
+    // Sluit modal via X-knop
+  document.getElementById("prodClose")?.addEventListener("click", () => {
+      document.getElementById("prodTextModal").hidden = true;
+  });
+
+
 }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="nl">
+<html lang="nl" class="theme-dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -19,6 +19,10 @@
   </div>
   <div class="actions">
     <a href="index.html" class="btn ghost">← Terug naar planner</a>
+        <label class="theme-switch">
+      <input type="checkbox" id="themeToggle">
+      <span class="slider"></span>
+    </label>
     <button id="logoutBtn" class="btn">Uitloggen</button>
   </div>
 </header>
@@ -26,67 +30,133 @@
 <main class="layout small" id="adminRoot">
   <section class="form-card">
     <h2>Beheer</h2>
-    <p>Beheer hier projecten, secties en medewerkers. Alleen admins kunnen wijzigen.</p>
 
     <hr>
 
     <!-- PROJECTEN -->
     <h3>Projecten</h3>
 
-    <div class="grid2">
-      <label>Projectnummer
-        <input id="projNumber" type="text" placeholder="Bijv. 2401">
-      </label>
-      <label>Projectnaam
-        <input id="projName" type="text" placeholder="Naam project">
-      </label>
+<div class="proj-row">
+  <div class="proj-field small">
+    <label>Projectnummer</label>
+    <input id="projNumber" type="text" placeholder="Bijv. 2401">
+  </div>
+
+  <div class="proj-field medium">
+    <label>Klantnaam</label>
+    <input id="projCustomer" type="text" placeholder="Klantnaam">
+  </div>
+
+  <div class="proj-field large">
+    <label>Projectnaam</label>
+    <input id="projName" type="text" placeholder="Naam project">
+  </div>
+
+  <div class="proj-field xl">
+    <label>Montageadres</label>
+    <input id="mInstallAddress" type="text" placeholder="Straatnaam 10, Plaats">
+  </div>
+</div>
+<!-- SECTIES -->
+<div id="sectionBox" hidden>
+  <h4 id="sectionHeader"></h4>
+  <ul id="sectionList"></ul>
+
+  <div class="row">
+    <div class="section-input-row">
+      <input id="sectionName" placeholder="Naam sectie">
+      <button id="addSectionBtn" class="btn primary small">Toevoegen</button>
       
     </div>
+  </div>
+</div>
+<button id="openProdText" class="btn small" style="margin-top:10px;">
+    📄 Productietekst
+</button>
 
-    <div class="grid2">
-      <label>Klant
-        <input id="projCustomer" type="text" placeholder="Klantnaam">
-      </label>
-    </div>
-    <label>Montageadres:</label>  
-        <input id="mInstallAddress" type="text" placeholder="Straatnaam 10, Plaats">
 
-    <button id="addProjBtn" class="primary admin-only">Project toevoegen</button>
+<button id="addProjBtn" class="btn primary">Project toevoegen</button>
+<div class="project-search-wrap">
+  <input 
+    id="projectSearch" 
+    type="text" 
+    placeholder="Zoek projectnummer, naam, klant of adres…" 
+    class="project-search-input"
+  />
+</div>
 
-    <ul id="projectList" class="list"></ul>
+
+<div id="projectList" class="project-table"></div>
+
     
 
     <hr>
 
-<!-- SECTIES -->
-<h3>Secties</h3>
 
-<div id="sectionBox" hidden>
-  <h4 id="sectionHeader"></h4>
-  <ul id="sectionList"></ul>
-  
-  <div class="row">
-    <input id="sectionName" placeholder="Naam sectie">
-    <button id="addSectionBtn" class="btn small primary">Sectie toevoegen</button>
-  </div>
-</div>
 
 <hr>
 
     <!-- MEDEWERKERS -->
     <h3>Medewerkers</h3>
-    <div class="row">
-      <input id="empName" type="text" placeholder="Naam nieuwe medewerker">
-      <label class="chk">
-        <input id="empShow" type="checkbox" checked> In kalender tonen
-      </label>
-      <button id="addEmpBtn" class="primary admin-only">Toevoegen</button>
-    </div>
-
+<div class="employee-add-row">
+  <input id="empName" placeholder="Naam nieuwe medewerker">
+  <button id="addEmpBtn" class="btn small primary">Toevoegen</button>
+</div>
     <ul id="empList" class="list"></ul>
 
   </section>
 </main>
+
+<!-- ===========================================
+     PRODUCTIETEKST 
+=========================================== -->
+<div id="prodTextModal" class="modal-backdrop" hidden>
+  <div class="modal" style="max-width:650px;">
+    <header class="modal-header">
+      <span id="prodModalTitle">Productietekst</span>
+      <button id="prodClose" class="icon-btn" type="button">×</button>
+    </header>
+
+    <div class="modal-body">
+      <textarea id="prodTextEditor"
+                style="width:100%; height:300px; padding:10px; font-size:14px;"></textarea>
+    </div>
+
+    <footer class="modal-footer">
+      <button id="prodSave" class="btn primary">Opslaan</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const toggle = document.getElementById("themeToggle");
+  if (!toggle) return;
+
+  // juiste startmode zetten
+  const saved = localStorage.getItem("theme");
+  if (saved === "light") {
+      document.documentElement.classList.remove("theme-dark");
+      toggle.checked = true;
+  } else {
+      document.documentElement.classList.add("theme-dark");
+      toggle.checked = false;
+  }
+
+  // omschakelen
+  toggle.addEventListener("change", () => {
+      if (toggle.checked) {
+          document.documentElement.classList.remove("theme-dark");
+          localStorage.setItem("theme", "light");
+      } else {
+          document.documentElement.classList.add("theme-dark");
+          localStorage.setItem("theme", "dark");
+      }
+  });
+
+});
+</script>
 
 </body>
 </html>

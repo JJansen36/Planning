@@ -186,17 +186,36 @@ async function handleSaveReservation() {
   const employee_id = empSel?.value ? Number(empSel.value) : null;
   const vehicle = vehSel?.value || null;
   const date = dateInp?.value || null;
-  const start_time = startInp?.value || null;
-  const end_time = endInp?.value || null;
+// Automatische hele dag wanneer tijden leeg zijn
+let start_time = startInp?.value;
+let end_time = endInp?.value;
+
+// Als beide leeg zijn → hele dag
+if (!start_time && !end_time) {
+  start_time = "08:00";
+  end_time = "17:00";
+}
+
+// Alleen start leeg → vul hele dag
+else if (!start_time) {
+  start_time = "08:00";
+}
+
+// Alleen eind leeg → vul hele dag
+else if (!end_time) {
+  end_time = "17:00";
+}
+
   const kind = kindSel?.value || "project";
   const project_id =
     kind === "project" && projSel?.value ? Number(projSel.value) : null;
   const notes = notesArea?.value?.trim() || null;
 
-  if (!employee_id || !vehicle || !date || !start_time || !end_time) {
-    if (msg) msg.textContent = "Vul medewerker, voertuig, datum en tijden in.";
-    return;
-  }
+if (!employee_id || !vehicle || !date) {
+  if (msg) msg.textContent = "Vul medewerker, voertuig en datum in.";
+  return;
+}
+
 
   if (end_time <= start_time) {
     if (msg) msg.textContent = "Eindtijd moet na starttijd liggen.";

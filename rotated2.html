@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Planning – Rotated View</title>
+      <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="stylesheet" href="rotated2.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="auth.js"></script>
+    <script src="app.js"></script>
+    <script src="rotated2.js" defer></script>
+</head>
+
+
+<body class="rotated-page">
+  
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">LOVD</div>
+        <div class="title">Rotated Planning</div>
+    </div>
+
+    <div class="week-nav">
+        <button id="prevRot" class="btn">← Vorige</button>
+    </div>
+    <div class="rot-week-label">
+        <span id="rotWeekLabel">Week …</span>
+    </div>
+        <button id="nextRot" class="btn">Volgende →</button>
+        <button id="todayRot" class="btn ghost">Vandaag</button>
+    </div>
+    <div class="week-nav">
+       <button id="logoutBtn" class="btn ghost">Uitloggen</button>
+
+    </div>
+</header>
+
+<div id="rotScroll">
+    <div id="rotHead" class="rot-head-row"></div>
+    <div id="rotGrid" class="rotated-grid"></div>
+</div>
+
+<!-- CELL TEMPLATE -->
+<template id="rotItemTpl">
+  <div class="item">
+    <div class="top1"></div>
+    <div class="meta"></div>
+    <div class="note"></div>
+  </div>
+</template>
+
+
+
+  <!-- MODAL (gekopieerd uit index.html) -->
+<div id="taskModal" class="modal-backdrop" hidden>
+  <div class="modal">
+
+    <!-- HEADER -->
+    <header class="modal-header">
+      <span id="taskTitle"></span>
+      <button id="modalClose" type="button" class="icon-btn">×</button>
+    </header>
+
+    <!-- BODY -->
+    <div class="modal-body">
+
+      <!-- PROJECT -->
+      <div class="form-row">
+        <label class="lbl">Project</label>
+        <div class="input-row">
+          <select id="taskProject"></select>
+          <button id="toggleProjSearch" class="btn small">🔍</button>
+          <button id="mProjAdd" class="btn small">+ Nieuw</button>
+        </div>
+      </div>
+
+      <div id="projSearchWrap" style="display:none;">
+        <input id="mProjSearch" type="text" placeholder="Zoek project…" />
+      </div>
+
+      <select id="mProj" style="display:none;"></select>
+
+      <!-- SECTIE -->
+      <div class="form-row">
+        <label class="lbl">Sectie</label>
+        <select id="taskSection" disabled></select>
+      </div>
+
+      <!-- PRODUCTIETEKST + PDF + MAP -->
+      <div class="input-row">
+        <button id="openProdText" class="btn small">🗎 Productietekst</button>
+        <button id="openPDF" class="btn small" style="display:none;">📐 Sectie PDF</button>
+        <button id="openMap" class="btn small" style="display:none;">📍 Route</button>
+      </div>
+
+      <!-- MEDEWERKERS -->
+      <div class="form-row">
+        <label class="lbl">Medewerkers</label>
+        <div id="mEmpList" class="checkbox-list"></div>
+      </div>
+
+      <!-- DATUM -->
+      <div class="form-row">
+        <label class="lbl">Datum</label>
+        <div class="input-row">
+          <input type="date" id="mStartDate" />
+          <input type="date" id="mEndDate" />
+        </div>
+      </div>
+
+<!-- TYPE -->
+<div class="form-row">
+  <label>Type</label>
+  <div class="radio-list">
+    <label><input type="radio" name="mType" value="productie"> Productie</label>
+    <label><input type="radio" name="mType" value="montage"> Montage</label>
+    <label><input type="radio" name="mType" value="service"> Service</label>
+    <label><input type="radio" name="mType" value="vrij"> Vrij</label>
+  </div>
+</div>
+
+<!-- DAGDEEL -->
+<div class="form-row">
+  <label>Dagdeel</label>
+  <div class="radio-list">
+    <label><input type="radio" name="mBlock" value="full"> Hele dag</label>
+    <label><input type="radio" name="mBlock" value="am"> Ochtend</label>
+    <label><input type="radio" name="mBlock" value="pm"> Middag</label>
+  </div>
+</div>
+      <!-- URGENT -->
+<div class="form-row urgent-row">
+  <label class="lbl">Urgent</label>
+  
+  <div class="urgent-wrap">
+    <input type="checkbox" id="mUrgent">
+    <span class="urgent-icon">❗</span>
+  </div>
+</div>
+
+<!-- VOERTUIG -->
+<div id="vehicleRow" class="form-row">
+  <label>Voertuig</label>
+  <div class="radio-list">
+    <label><input type="radio" name="mVehicle" value="nvt" checked> n.v.t.</label>
+    <label><input type="radio" name="mVehicle" value="bus"> Bus</label>
+    <label><input type="radio" name="mVehicle" value="bakwagen"> Bakwagen</label>
+  </div>
+</div>
+
+      <!-- NOTITIES -->
+      <div class="form-row">
+        <label class="lbl">Notities</label>
+        <textarea id="mNotes"></textarea>
+      </div>
+
+      <input type="hidden" id="mId">
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="modal-footer">
+      <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
+      <button id="mSave" type="button" class="primary-btn">Opslaan</button>
+    </footer>
+  </div>
+</div>
+
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    setupLogout("logoutBtn");
+  });
+</script>
+
+</body>
+</html>

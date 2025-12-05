@@ -1,6 +1,28 @@
+
 // ==========================================================
 //  SUPABASE CLIENT
 // ==========================================================
+
+// ============================================
+// THEMA LOADER (MOET BOVENAAN) 
+// ============================================
+function loadTheme() {
+    const saved = localStorage.getItem("planner-theme");
+    if (saved) {
+        document.documentElement.className = saved;
+    } else {
+        document.documentElement.classList.add("theme-light");
+    }
+}
+
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.classList.contains("theme-dark");
+    html.classList.toggle("theme-dark", !isDark);
+    html.classList.toggle("theme-light", isDark);
+    localStorage.setItem("planner-theme", html.className);
+}
+
 
 // deze twee mag je laten staan als je wilt, maar ze worden niet meer gebruikt
 let ADMIN_OK = false;
@@ -18,6 +40,7 @@ function isAdmin() {
 //  KLEINE HELPERS
 // ==========================================================
 const $ = (s) => document.querySelector(s);
+
 
 async function loadSectionOptions(projectId, selectedSectionId = null) {
   const sel = document.getElementById("taskSection");
@@ -522,93 +545,103 @@ async function quickAddProjectViaModal() {
 //  DATA LADEN / MUTEREN
 // ==========================================================
 async function fetchAll() {
-  const empQ = sb
-    .from("employees")
-    .select("*")
-    .order("calendar_order", { ascending: true, nullsFirst: false })
-    .order("name", { ascending: true });
+    const empQ = sb
+        .from("employees")
+        .select("*")
+        .order("calendar_order", { ascending: true, nullsFirst: false })
+        .order("name", { ascending: true });
 
-  const projQ = sb.from("projects").select("*").order("number", { ascending: true });
-  const asgQ = sb
-  .from("assignments")
-  .select(`
-    id,
-    start_date,
-    end_date,
-    block,
-    type,
-    urgent,
-    notes,
-    vehicle,
-    project_section_id,
-    assignment_employees ( employee_id ),
+    const projQ = sb.from("projects").select("*").order("number", { ascending: true });
 
-    project_sections:assignments_project_section_id_fkey (
-      section_name,
-      production_text,
-      attachment_url,
-      project_id,
-      projects (
-        number,
-        name,
-        install_address
-      )
-    )
-  `)
-  .order("start_date", { ascending: true })
-  .order("block", { ascending: true });
+    const asgQ = sb
+        .from("assignments")
+        .select(`
+            id,
+            start_date,
+            end_date,
+            block,
+            type,
+            urgent,
+            notes,
+            vehicle,
+            project_section_id,
+            assignment_employees ( employee_id ),
 
-  const resQ = sb.from("vehicle_reservations").select("*");
+            project_sections:assignments_project_section_id_fkey (
+              id,
+              section_name,
+              production_text,
+              attachment_url,
+              project_id,
+              projects (
+                id,
+                number,
+                name,
+                install_address
+              )
+            )
+        `)
+        .order("start_date", { ascending: true })
+        .order("block", { ascending: true });
 
-  // nieuwe query voor koppeltabel
-  const linkQ = sb
-    .from("assignment_employees")
-    .select("assignment_id, employee_id");
+    const resQ = sb.from("vehicle_reservations").select("*");
 
-  const [emp, proj, asg, res, links] = await Promise.all([
-    empQ,
-    projQ,
-    asgQ,
-    resQ,
-    linkQ,
-  ]);
+    const linkQ = sb
+        .from("assignment_employees")
+        .select("assignment_id, employee_id");
 
-  if (emp.error || proj.error || asg.error || res.error || links.error) {
-    throw emp.error || proj.error || asg.error || res.error || links.error;
-  }
+    const [emp, proj, asg, res, links] = await Promise.all([
+        empQ, projQ, asgQ, resQ, linkQ
+    ]);
 
-  // per assignment een .employees-array toevoegen
-  const assignmentsWithEmployees = (asg.data || []).map((a) => {
-    const theseLinks = (links.data || []).filter(
-      (l) => l.assignment_id === a.id
-    );
-    return {
-      ...a,
-      employees: theseLinks.map((l) => l.employee_id), // bijv [3, 7, 12]
+    if (emp.error || proj.error || asg.error || res.error || links.error) {
+        console.error("FETCHALL ERROR:", emp.error || proj.error || asg.error || res.error || links.error);
+        throw emp.error || proj.error || asg.error || res.error || links.error;
+    }
+
+    const assignmentsWithEmployees = (asg.data || []).map(a => {
+        const matching = (links.data || []).filter(l => l.assignment_id === a.id);
+        return {
+            ...a,
+            employees: matching.map(m => m.employee_id)
+        };
+    });
+
+    // ✅ DIT ontbrak: cache bijwerken!
+    cache = {
+        employees: emp.data || [],
+        projects: proj.data || [],
+        assignments: assignmentsWithEmployees,
+        reservations: res.data || []
     };
-  });
 
-  return {
-    employees: emp.data,
-    projects: proj.data,
-    assignments: assignmentsWithEmployees,
-    reservations: res.data,
-  };
+    // handig voor console debugging
+    window.cache = cache;
+
+    return cache;
 }
-
 async function reload() {
   try {
-    cache = await fetchAll();
+    const data = await fetchAll();   // één fetch!
+
+    // vul globale cache
+    cache.employees    = data.employees;
+    cache.projects     = data.projects;
+    cache.assignments  = data.assignments;
+    cache.reservations = data.reservations;   // <-- werkt nu wél
+
     render();
 
-    // 🟦 Rotated view → direct opnieuw tekenen na reload
-    if (document.body.classList.contains("rotated-page")
-        && typeof renderRotatedPlanner === "function") {
+    // Rotated opnieuw tekenen indien aanwezig
+    if (
+      document.body.classList.contains("rotated-page") &&
+      typeof renderRotatedPlanner === "function"
+    ) {
       renderRotatedPlanner();
     }
 
   } catch (e) {
-    console.error(e);
+    console.error("Reload error:", e);
   }
 }
 
@@ -1405,81 +1438,65 @@ if (mapBtn) {
 // ► READONLY MODE VOOR NIET-ADMINS
 if (!isAdmin()) {
 
-    // Alle bewerkbare UI verbergen
-    const hideIds = [
-        "taskProject", "taskSection", "mEmpList",
-        "toggleProjSearch", "mProjAdd", "projSearchWrap",
-        "mProj", "mNotes", "vehicleRow"
+    // Alles verbergen wat bewerkbaar is
+    const hideSelectors = [
+        "#taskProject",
+        "#toggleProjSearch",
+        "#mProjAdd",
+        "#projSearchWrap",
+        "#taskSection",
+        "#mEmpList",
+        "#mStartDate",
+        "#mEndDate",
+        "[name='mType']",
+        "[name='mBlock']",
+        "#mUrgent",
+        "[name='mVehicle']",
+        "#mNotes",
+        "#mDelete",
+        "#mSave"
     ];
-    hideIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "none";
+
+    hideSelectors.forEach(sel => {
+        document.querySelectorAll(sel).forEach(el => {
+            el.style.display = "none";
+        });
     });
 
-    // Verberg radio groepen: type, dagdeel, voertuig keuze
-    document.querySelectorAll(".radio-group").forEach(e => {
-        e.style.display = "none";
-    });
-
-    // Urgent verbergen
-    const urgLbl = document.getElementById("mUrgent")?.closest("label");
-    if (urgLbl) urgLbl.style.display = "none";
-
-    // Bewerkknoppen verbergen
-    document.getElementById("mSave").style.display = "none";
-    document.getElementById("mDelete").style.display = "none";
-
-    // --- READONLY DATA INVULLEN ---
-    document.getElementById("readonlyInfo").style.display = "block";
+    // Een container maken voor readonly info
+    let ro = document.getElementById("readonlyInfo");
+    if (!ro) {
+        ro = document.createElement("div");
+        ro.id = "readonlyInfo";
+        ro.style.marginTop = "10px";
+        ro.style.lineHeight = "1.6";
+        ro.style.fontSize = "18px";
+        ro.style.padding = "6px 4px";
+        document.querySelector(".modal-body").prepend(ro);
+    }
 
     const proj = rec.project_sections?.projects;
     const sec  = rec.project_sections;
-
-        // PDF bij sectie
-    const pdfWrap = document.getElementById("sectionPdfWrap");
-    if (pdfWrap) {
-        const url = sec?.attachment_url;
-        if (url) {
-            pdfWrap.innerHTML = `
-                <a href="${url}" target="_blank" class="btn small" style="margin-top:6px;">
-                    📄 Open sectie PDF
-                </a>
-            `;
-            pdfWrap.style.display = "block";
-        } else {
-            pdfWrap.style.display = "none";
-        }
-    }
-
-
-    document.getElementById("roProject").textContent =
-        proj ? `${proj.number} – ${proj.name}` : "(geen project)";
-
-    document.getElementById("roSection").textContent =
-        sec?.section_name || "(geen sectie)";
-
-    // Medewerkers ophalen
-    let names = [];
-    if (Array.isArray(rec.employees)) {
-        names = rec.employees.map(id => {
-            const e = cache.employees.find(x => x.id === id);
-            return e ? e.name : "?";
-        });
-    }
-    document.getElementById("roEmployees").textContent =
-        names.length ? names.join(", ") : "(geen medewerkers)";
-
-    document.getElementById("roDates").textContent =
-        `${rec.start_date} t/m ${rec.end_date}`;
+    const names = rec.employees
+        .map(id => cache.employees.find(e => e.id === id)?.name)
+        .join(", ");
 
     const blkMap = { am:"Ochtend", pm:"Middag", full:"Hele dag" };
-    document.getElementById("roBlock").textContent =
-        blkMap[rec.block] || "Onbekend";
 
-    document.getElementById("roType").textContent = rec.type || "-";
-    document.getElementById("roVehicle").textContent = rec.vehicle || "n.v.t.";
-    document.getElementById("roNotes").textContent = rec.notes || "(geen)";
+    ro.innerHTML = `
+        <div><strong>Project:</strong> ${proj?.number || ""} – ${proj?.name || ""}</div>
+        <div><strong>Sectie:</strong> ${sec?.section_name || ""}</div>
+        <div><strong>Medewerkers:</strong> ${names}</div>
+        <div><strong>Datum:</strong> ${rec.start_date} t/m ${rec.end_date}</div>
+        <div><strong>Dagdeel:</strong> ${blkMap[rec.block] || ""}</div>
+        <div><strong>Type:</strong> ${rec.type}</div>
+        <div><strong>Voertuig:</strong> ${rec.vehicle || "n.v.t."}</div>
+        <div><strong>Notities:</strong><br>${rec.notes || "(geen)"}</div>
+    `;
+
+    return; // STOP — bewerkmodus mag niet worden opgebouwd
 }
+
 
   const urgEl = document.getElementById("mUrgent");
   if (urgEl) urgEl.checked = !!rec.urgent;
@@ -1820,6 +1837,11 @@ function render() {
 
 
 document.addEventListener("DOMContentLoaded", async () => {
+
+    loadTheme();
+
+  document.getElementById("themeToggle")?.addEventListener("click", toggleTheme);
+  
   const session = await requireAuth();
   if (!session) return;
 
