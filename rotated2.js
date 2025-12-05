@@ -129,22 +129,37 @@ function renderRotatedPlanner() {
         grid.appendChild(dl);
 
         // Voertuigregels
-        const vehTasks = cache.assignments.filter(a =>
-            a.vehicle && a.vehicle !== "nvt" &&
-            iso >= a.start_date &&
-            iso <= a.end_date
-        );
+// VEHICLE RESERVATIONS VEILIG OPHALEN
+// VEHICLE RESERVATIONS — DAGLABEL
+const allRes = Array.isArray(cache.reservations) ? cache.reservations : [];
 
-        if (vehTasks.length) {
-            const vehicles = [...new Set(vehTasks.map(a => a.vehicle))];
-            vehicles.forEach(v => {
-                const vbox = el("div", "rot-veh-line", v);
-                vbox.dataset.vehicle = v;
-                vbox.addEventListener("mouseenter", () => highlightVehicleTasks(v));
-                vbox.addEventListener("mouseleave", () => clearVehicleHighlights());
-                dl.appendChild(vbox);
-            });
-        }
+const vehTasks = allRes.filter(r =>
+    String(r.start_date).slice(0,10) <= iso &&
+    String(r.end_date).slice(0,10) >= iso
+);
+
+vehTasks.forEach(v => {
+    const box = el("div", "rot-veh-line");
+
+    const veh = v.vehicle || "Voertuig";
+
+    const isPriv = (v.kind || "").toLowerCase() === "prive" ||
+                   (v.notes || "").toLowerCase().includes("prive");
+
+    box.dataset.vehicle = veh;
+
+    if (isPriv) {
+        box.textContent = `${veh} (privé)`;
+        box.classList.add("private");
+    } else {
+        box.textContent = veh;
+    }
+
+    dl.appendChild(box);
+});
+
+
+
 
         // medewerkers-cellen
         emps.forEach(emp => {
@@ -310,20 +325,45 @@ it.addEventListener("click", (e) => {
     const full = getFullAssignment(a.id);
     if (!full) return;
 
+    // -------------------------------------------
+    // FIX: Projectgegevens compleet maken voor modal
+    // -------------------------------------------
+    const sec = full.project_sections;
+
+    if (sec) {
+        // Project lookup als join niet volledig is
+        if (!sec.projects) {
+            sec.projects = cache.projects.find(p => p.id === sec.project_id) || null;
+        }
+    }
+
+    // Project-section object terugplaatsen in full
+    full.project_sections = sec;
+
+    // -------------------------------------------
+
     openTaskModal(full, { readonly: false });
 });
 
 
-    // NOTITIES
-    const noteEl = it.querySelector(".note");
-    if (noteEl) {
-        if (a.notes?.trim()) {
-            noteEl.textContent = a.notes;
-            noteEl.style.display = "block";
-        } else {
-            noteEl.style.display = "none";
-        }
-    }
+
+// ----------------------------------------------------
+// NOTE-REGEL: ICONEN + eventueel korte notitie
+// ----------------------------------------------------
+let iconLine = "";
+
+// TEKENING
+if (sec?.attachment_url) iconLine += "📐 ";
+
+// PRODUCTIETEKST
+if (sec?.production_text) iconLine += "📋 ";
+
+// KORTE NOTITIE (max 20 chars)
+if (a.notes?.trim()) iconLine += "📝";
+
+note.textContent = iconLine.trim();
+note.style.display = iconLine ? "block" : "none";
+
 
     // URGENT
     if (a.urgent) {
@@ -388,6 +428,7 @@ pm.appendChild(itPM);
                 urgent: false,
                 notes: null,
                 block: blk
+                
             }, { readonly: false });
         });
     });
@@ -624,4 +665,51 @@ if (location.pathname.includes("rotated")) {
         currentMonday = startOfWeek(new Date());
         renderRotatedPlanner();
     };
+}
+
+// ---------------------------------------------
+// FIX: Production text + PDF + map openen
+// ---------------------------------------------
+function setupTaskModalButtons(section, project) {
+
+    const btnProd = document.getElementById("openProdText");
+    const btnPDF  = document.getElementById("openPDF");
+    const btnMap  = document.getElementById("openMap");
+
+    // Reset display
+    btnProd.style.display = "none";
+    btnPDF.style.display = "none";
+    btnMap.style.display = "none";
+
+    // -------------------------
+    // PRODUCTIETEKST
+    // -------------------------
+    if (section?.production_text) {
+        btnProd.style.display = "inline-block";
+        btnProd.onclick = () => {
+            window.open(section.production_text, "_blank");
+        };
+    }
+
+    // -------------------------
+    // PDF
+    // -------------------------
+    if (section?.attachment_url) {
+        btnPDF.style.display = "inline-block";
+        btnPDF.onclick = () => {
+            window.open(section.attachment_url, "_blank");
+        };
+    }
+
+    // -------------------------
+    // MAP / ROUTE
+    // -------------------------
+    if (project?.install_address) {
+        btnMap.style.display = "inline-block";
+        btnMap.onclick = () => {
+            const url = "https://www.google.com/maps?q=" +
+                encodeURIComponent(project.install_address);
+            window.open(url, "_blank");
+        };
+    }
 }

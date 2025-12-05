@@ -1284,62 +1284,65 @@ function renderEmployeeCheckboxes(selected = []) {
 // ==========================================================
 //  MODAL OPENEN / SLUITEN
 // ==========================================================
+// ==========================================================
+//  MODAL OPENEN / SLUITEN
+// ==========================================================
 async function openTaskModal(rec = {}, opts = {}) {
-  // 🛠️ Veilig project + sectie toewijzen
-if (rec.project_sections && typeof rec.project_sections === "object") {
-  const sec = rec.project_sections;
-}
-  
   const modal = document.getElementById("taskModal");
   if (!modal) {
     console.warn("Modal bestaat niet op deze pagina → geen modal");
     return;
   }
 
-  // Datum & dagdeel vanuit cel
+  // Datum & dagdeel vanuit cel (bij nieuwe taak uit klik in kalender)
   if (opts.date) {
     rec.start_date = opts.date;
     if (!rec.end_date) {
       rec.end_date = opts.date;
     }
   }
-
   if (opts.block) {
     rec.block = opts.block;
   }
 
-// 🛠️ Projectgegevens veilig overnemen uit join
-if (rec.project_sections && typeof rec.project_sections === "object") {
-  const sec = rec.project_sections;
-  if (!rec.project_id && sec.project_id) {
-    rec.project_id = sec.project_id;
-  }
-  if (!rec.project_section_id && sec.id) {
-    rec.project_section_id = sec.id;
-  }
-}
+  // ---------------------------------------------
+  // SECTIE + PROJECT NORMALISEREN
+  // ---------------------------------------------
+  let sec = rec.project_sections || null;
 
+  // Als er geen sectie-object is maar wel een ID → probeer via assignments-cache
+  if (!sec && rec.project_section_id) {
+    const same = cache.assignments.find(
+      a => a.project_sections && a.project_sections.id === rec.project_section_id
+    );
+    if (same) sec = same.project_sections;
+  }
+
+  // Project proberen te vinden
+  let proj = null;
+  if (sec && sec.projects) {
+    proj = sec.projects;
+  } else if (sec && sec.project_id) {
+    proj = cache.projects.find(p => p.id === sec.project_id) || null;
+  } else if (rec.project_id) {
+    proj = cache.projects.find(p => p.id === rec.project_id) || null;
+  }
+
+  // Terugschrijven in rec zodat rest van de code hetzelfde kan blijven werken
+  rec.project_sections = sec || rec.project_sections || null;
+  if (!rec.project_id && proj?.id) {
+    rec.project_id = proj.id;
+  }
 
   const readonly = !!opts.readonly;
-
-  
-
-// 🔹 Correct dropdown veld vullen
-const mProj = document.getElementById("mProj");
-const taskProj = document.getElementById("taskProject");
-const pid = rec.project_id || null;
-
-if (mProj)   mProj.value = pid ?? "";
-if (taskProj) taskProj.value = pid ?? "";
-
-  
   const firstEmpId = (cache.employees[0] && cache.employees[0].id) || "";
   const firstProjId = (cache.projects[0] && cache.projects[0].id) || "";
 
-  // medewerkers bepalen
+  // ---------------------------------------------
+  // MEDEWERKERS LIJST (multi-select)
+  // ---------------------------------------------
   let selectedEmployees = [];
   if (Array.isArray(rec.employees) && rec.employees.length) {
-    
     selectedEmployees = rec.employees.slice(0, 4);
   } else if (rec.employee_id) {
     selectedEmployees = [rec.employee_id];
@@ -1351,7 +1354,9 @@ if (taskProj) taskProj.value = pid ?? "";
     renderEmployeeCheckboxes(selectedEmployees);
   }
 
-  // Project dropdown her-renderen
+  // ---------------------------------------------
+  // Project dropdown + zoeklijst
+  // ---------------------------------------------
   const searchVal = document.getElementById("mProjSearch")?.value || "";
   renderProjectOptions(searchVal, rec.project_id);
 
@@ -1362,17 +1367,15 @@ if (taskProj) taskProj.value = pid ?? "";
   setVal("mId", rec.id || "");
 
   if (edit) {
-    // 🟢 Bestaande taak → data uit record
     setVal("taskProject", rec.project_id);
     setVal("mStartDate", rec.start_date || opts.date || "");
     setVal("mEndDate", rec.end_date || rec.start_date || opts.date || "");
     setVal("mNotes", rec.notes || "");
-
   } else {
-     setVal("taskProject", rec.project_id || "");
-     setVal("mStartDate", rec.start_date || opts.date || "");
-     setVal("mEndDate", rec.end_date || rec.start_date || opts.date || "");
-     setVal("mNotes", rec.notes || "");
+    setVal("taskProject", rec.project_id || "");
+    setVal("mStartDate", rec.start_date || opts.date || "");
+    setVal("mEndDate", rec.end_date || rec.start_date || opts.date || "");
+    setVal("mNotes", rec.notes || "");
 
     if (opts.block) {
       const radio = document.querySelector(
@@ -1382,122 +1385,153 @@ if (taskProj) taskProj.value = pid ?? "";
     }
   }
 
+  // Sectie-dropdown laden & preselecteren
   await loadSectionOptions(rec.project_id, rec.project_section_id || null);
 
-// ► Productietekst alleen tonen als die er is
-const btn = document.querySelector("#taskModal #openProdText");
-
-if (btn) {
-    const prodText = rec.project_sections?.production_text?.trim() || "";
+  // ---------------------------------------------
+  // PRODUCTIETEKST KNOP
+  // ---------------------------------------------
+  const prodBtn = document.querySelector("#taskModal #openProdText");
+  if (prodBtn) {
+    const prodText = (sec?.production_text || "").trim();
 
     if (prodText.length > 0) {
-        btn.style.display = "";
-        btn.onclick = (ev) => {
-            ev.stopPropagation();
-            document.getElementById("prodTextContent").textContent = prodText;
-            document.getElementById("prodTextModal").hidden = false;
-        };
+      prodBtn.style.display = "";
+      prodBtn.onclick = (ev) => {
+        ev.stopPropagation();
+
+        const contentEl = document.getElementById("prodTextContent");
+        const modalEl = document.getElementById("prodTextModal");
+
+        // Als aparte productie-tekst modal aanwezig is → daarin tonen
+        if (contentEl && modalEl) {
+          contentEl.textContent = prodText;
+          modalEl.hidden = false;
+        } else {
+          // Fallback voor rotated2.html: gewoon in een alert tonen
+          alert(prodText);
+        }
+      };
     } else {
-        btn.style.display = "none";
+      prodBtn.style.display = "none";
     }
-}
+  }
 
+  // ---------------------------------------------
+  // PDF KNOP
+  // ---------------------------------------------
+  const pdfBtn = document.getElementById("openPDF");
+  const pdfUrl = sec?.attachment_url || null;
 
-
-// PDF tonen indien sectie een bijlage heeft
-const pdfBtn = document.getElementById("openPDF");
-const pdfUrl = rec.project_sections?.attachment_url;
-
-if (pdfBtn) {
+  if (pdfBtn) {
     if (pdfUrl) {
-        pdfBtn.style.display = "";
-        pdfBtn.onclick = () => window.open(pdfUrl, "_blank");
+      pdfBtn.style.display = "";
+      pdfBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        window.open(pdfUrl, "_blank");
+      };
     } else {
-        pdfBtn.style.display = "none";
+      pdfBtn.style.display = "none";
     }
-}
+  }
 
-// 📍 MAPS ROUTE KNOP
-const mapBtn = document.getElementById("openMap");
-const installAddr = rec.project_sections?.projects?.install_address;
+  // ---------------------------------------------
+  // MAP / ROUTE KNOP
+  // ---------------------------------------------
+  const mapBtn = document.getElementById("openMap");
+  const installAddr = proj?.install_address || "";
 
-if (mapBtn) {
+  if (mapBtn) {
     if (installAddr) {
-        const mapsUrl = "https://www.google.com/maps?q=" + encodeURIComponent(installAddr);
-        mapBtn.style.display = "";
-        mapBtn.onclick = () => window.open(mapsUrl, "_blank");
+      const mapsUrl =
+        "https://www.google.com/maps?q=" + encodeURIComponent(installAddr);
+      mapBtn.style.display = "";
+      mapBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        window.open(mapsUrl, "_blank");
+      };
     } else {
-        mapBtn.style.display = "none";
+      mapBtn.style.display = "none";
     }
-}
+  }
 
-
-  // Modal tonen
+  // ---------------------------------------------
+  // MODAL TONEN
+  // ---------------------------------------------
   document.getElementById("taskModal").hidden = false;
 
-// ► READONLY MODE VOOR NIET-ADMINS
-if (!isAdmin()) {
-
-    // Alles verbergen wat bewerkbaar is
+  // ---------------------------------------------
+  // READONLY VIEW VOOR NIET-ADMINS
+  // ---------------------------------------------
+  if (!isAdmin()) {
+    // bewerkbare velden verbergen
     const hideSelectors = [
-        "#taskProject",
-        "#toggleProjSearch",
-        "#mProjAdd",
-        "#projSearchWrap",
-        "#taskSection",
-        "#mEmpList",
-        "#mStartDate",
-        "#mEndDate",
-        "[name='mType']",
-        "[name='mBlock']",
-        "#mUrgent",
-        "[name='mVehicle']",
-        "#mNotes",
-        "#mDelete",
-        "#mSave"
+      "#taskProject",
+      "#toggleProjSearch",
+      "#mProjAdd",
+      "#projSearchWrap",
+      "#taskSection",
+      "#mEmpList",
+      "#mStartDate",
+      "#mEndDate",
+      "[name='mType']",
+      "[name='mBlock']",
+      "#mUrgent",
+      "[name='mVehicle']",
+      "#mNotes",
+      "#mDelete",
+      "#mSave"
     ];
 
     hideSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(el => {
-            el.style.display = "none";
-        });
+      document.querySelectorAll(sel).forEach(el => {
+        el.style.display = "none";
+      });
     });
 
-    // Een container maken voor readonly info
+    // readonly info-blok bovenin
     let ro = document.getElementById("readonlyInfo");
     if (!ro) {
-        ro = document.createElement("div");
-        ro.id = "readonlyInfo";
-        ro.style.marginTop = "10px";
-        ro.style.lineHeight = "1.6";
-        ro.style.fontSize = "18px";
-        ro.style.padding = "6px 4px";
-        document.querySelector(".modal-body").prepend(ro);
+      ro = document.createElement("div");
+      ro.id = "readonlyInfo";
+      ro.style.marginTop = "10px";
+      ro.style.lineHeight = "1.6";
+      ro.style.fontSize = "18px";
+      ro.style.padding = "6px 4px";
+      document.querySelector(".modal-body").prepend(ro);
     }
 
-    const proj = rec.project_sections?.projects;
-    const sec  = rec.project_sections;
-    const names = rec.employees
-        .map(id => cache.employees.find(e => e.id === id)?.name)
-        .join(", ");
+    const projNum = proj?.number || "";
+    const projName = proj?.name || "";
+    const secName = sec?.section_name || "";
 
-    const blkMap = { am:"Ochtend", pm:"Middag", full:"Hele dag" };
+    const empNames = Array.isArray(rec.employees)
+      ? rec.employees
+          .map(id => cache.employees.find(e => e.id === id)?.name)
+          .filter(Boolean)
+          .join(", ")
+      : "";
+
+    const blkMap = { am: "Ochtend", pm: "Middag", full: "Hele dag" };
 
     ro.innerHTML = `
-        <div><strong>Project:</strong> ${proj?.number || ""} – ${proj?.name || ""}</div>
-        <div><strong>Sectie:</strong> ${sec?.section_name || ""}</div>
-        <div><strong>Medewerkers:</strong> ${names}</div>
-        <div><strong>Datum:</strong> ${rec.start_date} t/m ${rec.end_date}</div>
-        <div><strong>Dagdeel:</strong> ${blkMap[rec.block] || ""}</div>
-        <div><strong>Type:</strong> ${rec.type}</div>
-        <div><strong>Voertuig:</strong> ${rec.vehicle || "n.v.t."}</div>
-        <div><strong>Notities:</strong><br>${rec.notes || "(geen)"}</div>
+      <div><strong>Project:</strong> ${projNum} – ${projName}</div>
+      <div><strong>Sectie:</strong> ${secName}</div>
+      <div><strong>Medewerkers:</strong> ${empNames || "-"}</div>
+      <div><strong>Datum:</strong> ${rec.start_date || ""} t/m ${rec.end_date || ""}</div>
+      <div><strong>Dagdeel:</strong> ${blkMap[rec.block] || ""}</div>
+      <div><strong>Type:</strong> ${rec.type || ""}</div>
+      <div><strong>Voertuig:</strong> ${rec.vehicle || "n.v.t."}</div>
+      <div><strong>Notities:</strong><br>${rec.notes || "(geen)"}</div>
     `;
 
-    return; // STOP — bewerkmodus mag niet worden opgebouwd
-}
+    // Let op: productie­tekst + PDF + Route knoppen blijven wél zichtbaar
+    return; // ⬅️ niet verder in bewerkmodus
+  }
 
-
+  // ---------------------------------------------
+  // BEWERKBARE MODUS (ADMIN)
+  // ---------------------------------------------
   const urgEl = document.getElementById("mUrgent");
   if (urgEl) urgEl.checked = !!rec.urgent;
 
@@ -1514,8 +1548,9 @@ if (!isAdmin()) {
   if (vehRadio) vehRadio.checked = true;
 
   const vehicleRow = document.getElementById("vehicleRow");
-  if (vehicleRow) vehicleRow.style.display =
-    typeVal === "montage" ? "" : "none";
+  if (vehicleRow) {
+    vehicleRow.style.display = typeVal === "montage" ? "" : "none";
+  }
 
   let blk = rec.block || blockFromTimes(rec.start_time, rec.end_time);
   if (!blk) blk = "am";
@@ -1529,7 +1564,7 @@ if (!isAdmin()) {
   const delBtn = document.getElementById("mDelete");
   if (readonly) {
     if (saveBtn) saveBtn.style.display = "none";
-    if (delBtn) delBtn.style.display = "none";
+    if (delBtn) saveBtn.style.display = "none";
   } else {
     if (saveBtn) saveBtn.style.display = "";
     if (delBtn) {
@@ -1564,9 +1599,13 @@ if (!isAdmin()) {
       .querySelectorAll(`input[name="${name}"]`)
       .forEach((r) => (r.disabled = readonly));
   });
-
-
 }
+
+function closeTaskModal() {
+  const modal = document.getElementById("taskModal");
+  if (modal) modal.hidden = true;
+}
+
 
 function closeTaskModal() {
   const modal = document.getElementById("taskModal");
