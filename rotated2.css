@@ -1437,3 +1437,18 @@ header {
     font-size: 11px;
     opacity: .9;
 }
+.item.vehicle-highlight {
+    outline: 3px solid #a67cff;
+    box-shadow: 0 0 8px #a67cffaa;
+    z-index: 50;
+}
+.section-highlight {
+    outline: 3px solid #ffca28;
+    box-shadow: 0 0 8px #ffca28aa;
+    z-index: 20;
+}
+.item.touch-highlight {
+    outline: 3px solid #9d5cff;
+    z-index: 20;
+    position: relative;
+}
