@@ -873,10 +873,11 @@ grid.appendChild(empCell);
       const sec  = a.project_sections;
 
 
-      item.dataset.id = a.id;
-      item.dataset.empId = emp.id;   // 🔹 deze regel toevoegen
+item.dataset.id = a.id;
+item.dataset.empId = emp.id;
+// sectie-id voor highlight
+item.dataset.sectionId = a.project_sections?.id || "";
 
-  
 
 // 🔹 Kleur op basis van type
 item.classList.add(a.type || "productie");
@@ -961,6 +962,20 @@ item.querySelector(".top2").textContent = "";
       if (a.notes) parts.push(a.notes);
 
       item.querySelector(".meta").textContent = parts.join(" • ");
+
+// HOVER → highlight taken met dezelfde sectie
+item.addEventListener("mouseenter", () => {
+    const secId = item.dataset.sectionId;
+    if (!secId) return;
+    document.querySelectorAll(`.item[data-section-id="${secId}"]`)
+      .forEach(el => el.classList.add("section-highlight"));
+});
+
+// MOUSELEAVE → highlight verwijderen
+item.addEventListener("mouseleave", () => {
+    document.querySelectorAll(".section-highlight")
+      .forEach(el => el.classList.remove("section-highlight"));
+});
 
 (function (rec) {
 item.addEventListener("click", function (e) {
@@ -1483,11 +1498,24 @@ async function openTaskModal(rec = {}, opts = {}) {
       "#mSave"
     ];
 
-    hideSelectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        el.style.display = "none";
-      });
-    });
+// 1. Verberg ALLE bewerkbare form-rows in één keer
+document.querySelectorAll("#taskModal .form-row, #taskModal .radio-list").forEach(row => {
+    row.style.display = "none";
+});
+
+// 2. Verberg ook losse labels die buiten form-rows staan
+document.querySelectorAll("#taskModal label.lbl").forEach(lbl => {
+    lbl.style.display = "none";
+});
+
+// 3. Verberg footer-knoppen
+document.querySelectorAll("#mSave, #mDelete").forEach(el => {
+    el.style.display = "none";
+});
+
+
+// 5. Laat de readonly samenvatting staan (ro)
+
 
     // readonly info-blok bovenin
     let ro = document.getElementById("readonlyInfo");
@@ -1873,6 +1901,36 @@ function render() {
 }
 
 
+// ==========================================================
+//  HOVER: alle taken met dezelfde sectie highlighten
+// ==========================================================
+document.addEventListener("mouseover", (e) => {
+  const item = e.target.closest(".item");
+  if (!item) return;
+
+  const secId = item.dataset.sectionId;
+  if (!secId) return;
+
+  // eerst alle oude highlights weghalen
+  document.querySelectorAll(".section-highlight").forEach(el => {
+    el.classList.remove("section-highlight");
+  });
+
+  // alle taken met dezelfde sectie-id highlighten
+  document
+    .querySelectorAll(`.item[data-section-id="${secId}"]`)
+    .forEach(el => el.classList.add("section-highlight"));
+});
+
+document.addEventListener("mouseout", (e) => {
+  const item = e.target.closest(".item");
+  if (!item) return;
+
+  // bij verlaten taak: alle highlights weghalen
+  document.querySelectorAll(".section-highlight").forEach(el => {
+    el.classList.remove("section-highlight");
+  });
+});
 
 
 document.addEventListener("DOMContentLoaded", async () => {

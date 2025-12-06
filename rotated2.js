@@ -1,3 +1,6 @@
+
+
+
 function getFullAssignment(id) {
     return cache.assignments.find(a => a.id === id) || null;
 }
@@ -70,6 +73,8 @@ function clearVehicleHighlights() {
 // RENDER ROTATED PLANNER
 // -----------------------------
 function renderRotatedPlanner() {
+
+        console.log("🔥 RENDER START — cache.reservations =", cache.reservations);
     const grid = document.getElementById("rotGrid");
 
     if (!grid) return;
@@ -115,7 +120,14 @@ function renderRotatedPlanner() {
         }
 
         // Daglabel links
-        const dl = el("div", "rot-daylabel", fmtDate(day));
+const dl = el("div", "rot-daylabel");
+
+const dateSpan = el("div", "rot-date-text", fmtDate(day));
+const vehWrap = el("div", "rot-veh-wrap");
+
+dl.appendChild(dateSpan);
+dl.appendChild(vehWrap);
+
         if (iso === TODAY_ISO) {
             dl.classList.add("today");
             dl.id = "todayRow";
@@ -128,37 +140,78 @@ function renderRotatedPlanner() {
         dl.style.gridColumn = "1";
         grid.appendChild(dl);
 
-        // Voertuigregels
-// VEHICLE RESERVATIONS VEILIG OPHALEN
-// VEHICLE RESERVATIONS — DAGLABEL
-const allRes = Array.isArray(cache.reservations) ? cache.reservations : [];
+console.log("RAW RESERVATIONS:", cache.reservations);
 
-const vehTasks = allRes.filter(r =>
-    String(r.start_date).slice(0,10) <= iso &&
-    String(r.end_date).slice(0,10) >= iso
-);
+// --------------------------------------
+// VEHICLES PER DAG (project + privé)
+// --------------------------------------
+const vehToday = [
+    // 1️⃣ Reserveringen (bus, bakwagen, privé)
+    ...(cache.reservations || [])
+        .filter(r => String(r.date).slice(0, 10) === iso)
+        .map(r => ({
+            vehicle: r.vehicle,
+            private: ["privé", "prive", "private"].includes((r.kind || "").toLowerCase()),
+            employee: (cache.employees.find(e => e.id === r.employee_id)?.name) || null
+        })),
 
-vehTasks.forEach(v => {
-    const box = el("div", "rot-veh-line");
+    // 2️⃣ Taken die een voertuig gebruiken
+    ...cache.assignments
+        .filter(a =>
+            a.type === "montage" &&
+            a.vehicle &&
+            a.vehicle !== "nvt" &&
+            iso >= a.start_date &&
+            iso <= a.end_date
+        )
+        .map(a => ({
+            vehicle: a.vehicle,
+            private: false,
+            employee: null
+        }))
+];
 
-    const veh = v.vehicle || "Voertuig";
+    console.log("VEH TODAY FOR", iso, vehToday);
+// --------------------------------------
+// RENDER VEHICLE LABELS IN DAG-CEL
+// --------------------------------------
+const wrap = dl.querySelector(".rot-veh-wrap");
+wrap.innerHTML = ""; // leegmaken voor veiligheid
 
-    const isPriv = (v.kind || "").toLowerCase() === "prive" ||
-                   (v.notes || "").toLowerCase().includes("prive");
+vehToday.forEach(v => {
+    const row = el("div", "rot-veh-row");
+    row.dataset.vehicle = v.vehicle.toLowerCase();
 
-    box.dataset.vehicle = veh;
 
-    if (isPriv) {
-        box.textContent = `${veh} (privé)`;
-        box.classList.add("private");
-    } else {
-        box.textContent = veh;
+    // Altijd voertuignaam
+    const main = el(
+        "div",
+        "veh-main",
+        v.private ? `${v.vehicle} (privé)` : v.vehicle
+    );
+    row.appendChild(main);
+
+    // Medewerkernaam bij privé
+    if (v.private && v.employee) {
+        const emp = el("div", "veh-emp", v.employee);
+        row.appendChild(emp);
     }
 
-    dl.appendChild(box);
+    if (v.private) row.classList.add("private");
+
+    // Hover → taken highlighten
+row.addEventListener("mouseenter", () => {
+    highlightVehicleTasks(v.vehicle);
+});
+
+// Weggaan → highlight verwijderen
+row.addEventListener("mouseleave", () => {
+    clearVehicleHighlights();
 });
 
 
+    wrap.appendChild(row);
+});
 
 
         // medewerkers-cellen
@@ -216,21 +269,9 @@ function addRotatedCell(grid, emp, day) {
     wrap.appendChild(am);
     wrap.appendChild(pm);
 
-// -----------------------------
-// VOERTUIGRESERVERING (PRIVÉ) VOOR DEZE DAG
-// -----------------------------
-const priv = cache.reservations?.find(r =>
-    r.start_date <= iso &&
-    r.end_date >= iso &&
-    (r.notes || "").toLowerCase().includes("prive")
-);
 
-if (priv) {
-    const tag = document.createElement("div");
-    tag.className = "veh-private-tag";
-    tag.textContent = `Privé – ${priv.vehicle}`;
-    wrap.prepend(tag);
-}
+
+
 
 
 // TAKEN ophalen
@@ -245,30 +286,35 @@ tasks.forEach(a => {
     const it = document.getElementById("rotItemTpl")
         .content.cloneNode(true).firstElementChild;
 
-    // LOVD markering
-    let isLOVD = false;
-    const empObj = cache.employees.find(e => e.id === emp.id);
-    if (empObj?.name.toLowerCase().includes("lovd")) isLOVD = true;
+// TAKEN-info ophalen
+const proj = a.project_sections?.projects || null;
+const sec  = a.project_sections || null;
 
-    if (a.employees?.length) {
-        for (const eid of a.employees) {
-            const em = cache.employees.find(e => e.id === eid);
-            if (em?.name.toLowerCase().includes("lovd")) {
-                isLOVD = true;
-                break;
-            }
+it.draggable = true;
+it.dataset.id = a.id;
+it.dataset.empId = emp.id;
+it.dataset.vehicle = a.vehicle || "";
+
+// ⭐ Sectie-ID voor highlight
+it.dataset.sectionId = sec?.id || "";
+
+it.classList.add(a.type);
+
+// LOVD markering
+let isLOVD = false;
+const empObj = cache.employees.find(e => e.id === emp.id);
+if (empObj?.name.toLowerCase().includes("lovd")) isLOVD = true;
+
+if (a.employees?.length) {
+    for (const eid of a.employees) {
+        const em = cache.employees.find(e => e.id === eid);
+        if (em?.name.toLowerCase().includes("lovd")) {
+            isLOVD = true;
+            break;
         }
     }
-    if (isLOVD) it.classList.add("lovd");
-
-    it.draggable = true;
-    it.dataset.id = a.id;
-    it.dataset.empId = emp.id;
-    it.dataset.vehicle = a.vehicle || "";
-    it.classList.add(a.type);
-
-    const proj = a.project_sections?.projects;
-    const sec = a.project_sections;
+}
+if (isLOVD) it.classList.add("lovd");
 
 /// ----------------------------
 // 3-REGEL TAKENBLOK OPBOUWEN
@@ -358,8 +404,7 @@ if (sec?.attachment_url) iconLine += "📐 ";
 // PRODUCTIETEKST
 if (sec?.production_text) iconLine += "📋 ";
 
-// KORTE NOTITIE (max 20 chars)
-if (a.notes?.trim()) iconLine += "📝";
+
 
 note.textContent = iconLine.trim();
 note.style.display = iconLine ? "block" : "none";

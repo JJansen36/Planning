@@ -1400,3 +1400,40 @@ header {
     color: var(--text-muted, #ccc);
     white-space: nowrap;
 }
+.section-highlight {
+
+  box-shadow: 0 0 15px 5px rgba(81, 81, 82, 0.8) !important;
+  background-color: rgba(166,140,255,0.15) !important;
+  border-radius: 10px;
+  transition: all 0.12s ease-in-out;
+  position: relative;
+  z-index: 999;
+  transform: scaleY(1.05);
+}
+.rot-veh-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+.rot-veh-row {
+    background: #dbd0f2;
+    color: rgb(58, 57, 57);
+    padding: 2px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2em;
+}
+.rot-veh-row.private {
+    background: #dbd0f2;
+}
+.veh-main {
+    font-weight: 600;
+}
+.veh-emp {
+    font-size: 11px;
+    opacity: .9;
+}

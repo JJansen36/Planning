@@ -2,24 +2,11 @@
 // ROTATED VIEW LOADER
 // -----------------------------
 async function loadRotated() {
-    await reload();
-    renderRotatedPlanner();
-
-    // Auto-scroll naar de huidige dag
-    setTimeout(() => {
-        const el = document.getElementById("todayCell");
-        if (el) {
-            const offset = 110; // topbar + medewerker header
-            const y = el.getBoundingClientRect().top + window.scrollY - offset;
-            window.scrollTo({ top: y, behavior: "smooth" });
-        }
-    }, 50);
+    await reload();          // data uit Supabase
+    renderRotatedPlanner();  // render 4-weken rotated grid
 }
 
-
-// -----------------------------
-// Wacht tot app.js klaar is
-// -----------------------------
+// wacht tot app.js klaar is
 document.addEventListener("DOMContentLoaded", () => {
     const wait = setInterval(() => {
         if (cache && cache.employees) {
@@ -31,31 +18,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-// -----------------------------
-// Highlight functies (MOET BOVENAAN!)
-// -----------------------------
-function highlightVehicleTasks(vehicleName) {
-    const target = (vehicleName || "").toLowerCase().trim();
-
-    document.querySelectorAll(".item").forEach(it => {
-        const v = (it.dataset.vehicle || "").toLowerCase().trim();
-
-        if (v && v === target) {
-            it.classList.add("vehicle-highlight");
-        }
-    });
-}
-
-function clearVehicleHighlights() {
-    document.querySelectorAll(".item.vehicle-highlight")
-        .forEach(it => it.classList.remove("vehicle-highlight"));
-}
-
-
-
-// -----------------------------
-// RENDER ROTATED PLANNER
-// -----------------------------
 function renderRotatedPlanner() {
     const grid = document.getElementById("rotGrid");
     if (!grid) return;
@@ -63,26 +25,30 @@ function renderRotatedPlanner() {
     grid.innerHTML = "";
 
     const START = currentMonday;
-    const DAYS = 28; // 4 weken
-    const days = Array.from({ length: DAYS }, (_, i) => addDays(START, i));
+    const DAYS = 28;  // 4 weken
+    const days = Array.from({length: DAYS}, (_, i) => addDays(START, i));
 
     const firstWeek = getWeekNumber(START);
     const lastWeek = getWeekNumber(addDays(START, 21));
     document.getElementById("rotWeekLabel").textContent =
         `Week ${firstWeek} t/m ${lastWeek}`;
 
-    const emps = cache.employees.filter(e => e.show_in_calendar !== false);
+        const emps = cache.employees.filter(e => e.show_in_calendar !== false);
 
-    document.documentElement.style.setProperty("--emp-count", emps.length);
+        document.documentElement.style.setProperty("--emp-count", emps.length);
 
-    // Sticky head
-    const head = document.getElementById("rotHead");
-    head.innerHTML = "<div>Dag</div>" +
-        emps.map(e => {
-            const isLovd = e.name && e.name.toLowerCase().includes("lovd");
-            const cls = isLovd ? "emp-LOVD" : "";
-            return `<div class="${cls}">${e.name}</div>`;
-        }).join("");
+// maak kolommen in CSS
+document.documentElement.style.setProperty("--emp-count", emps.length);
+
+// bouw sticky head
+const head = document.getElementById("rotHead");
+head.innerHTML = "<div>Dag</div>" +
+    emps.map(e => {
+        const isLovd = e.name && e.name.toLowerCase().includes("lovd");
+        const cls = isLovd ? "emp-LOVD" : "";
+        return `<div class="${cls}">${e.name}</div>`;
+    }).join("");
+
 
     grid.style.setProperty("--emp-count", emps.length);
 
@@ -102,35 +68,40 @@ function renderRotatedPlanner() {
 
         // Daglabel links
         const dl = el("div", "rot-daylabel", fmtDate(day));
-        if (iso === TODAY_ISO) {
-            dl.classList.add("today");
-            dl.id = "todayRow";
-        }
-
-        if (day.getDay() === 0 || day.getDay() === 6) {
-            dl.classList.add("weekend");
-        }
-
+        if (iso === TODAY_ISO) dl.classList.add("today");
+        if (day.getDay() === 0 || day.getDay() === 6) dl.classList.add("weekend");
         dl.style.gridColumn = "1";
         grid.appendChild(dl);
 
-        // Voertuigregels
-        const vehTasks = cache.assignments.filter(a =>
-            a.vehicle && a.vehicle !== "nvt" &&
-            iso >= a.start_date &&
-            iso <= a.end_date
-        );
+        // ===============================
+        // VOERTUIGRESERVERINGEN PER DAG
+        // (zoals oude versie – uit vehicle_reservations)
+        // ===============================
+        const vehToday = (cache.reservations || []).filter(r => {
+            // r.date is al een ISO-datum (2025-12-01)
+            return String(r.date).slice(0, 10) === iso;
+        });
 
-        if (vehTasks.length) {
-            const vehicles = [...new Set(vehTasks.map(a => a.vehicle))];
-            vehicles.forEach(v => {
-                const vbox = el("div", "rot-veh-line", v);
-                vbox.dataset.vehicle = v;
-                vbox.addEventListener("mouseenter", () => highlightVehicleTasks(v));
-                vbox.addEventListener("mouseleave", () => clearVehicleHighlights());
-                dl.appendChild(vbox);
-            });
-        }
+        vehToday.forEach(r => {
+            const veh = r.vehicle || "voertuig";
+
+            const isPrivate =
+                (r.kind && r.kind.toLowerCase() === "private") ||
+                (r.notes || "").toLowerCase().includes("priv");
+
+            const row = el("div", "rot-veh-row", isPrivate ? `${veh} (privé)` : veh);
+            row.dataset.vehicle = veh;
+
+            if (isPrivate) row.classList.add("private");
+
+            // hover → taken met dezelfde wagen highlighten
+            row.addEventListener("mouseenter", () => highlightVehicleTasks(veh));
+            row.addEventListener("mouseleave", () => clearVehicleHighlights());
+
+            // in de dag-cel onder de datum
+            dl.appendChild(row);
+        });
+
 
         // medewerkers-cellen
         emps.forEach(emp => {
@@ -141,45 +112,63 @@ function renderRotatedPlanner() {
 
 
 
-// -----------------------------
-// HEADER BUILDER
-// -----------------------------
 function makeHeader(txt) {
     const d = document.createElement("div");
     d.className = "rot-head";
     d.textContent = txt;
     return d;
 }
-// -----------------------------
-// ROTATED CELL BUILDER
-// -----------------------------
+
+if (location.pathname.includes("rotated.html")) {
+    setTimeout(() => loadRotated(), 50);
+
+function highlightVehicleTasks(vehicleName) {
+    document.querySelectorAll(".item").forEach(it => {
+        if (it.dataset.vehicle &&
+            it.dataset.vehicle.toLowerCase() === vehicleName.toLowerCase()) {
+            
+            it.classList.add("vehicle-highlight");
+        }
+    });
+}
+
+function clearVehicleHighlights() {
+    document.querySelectorAll(".item.vehicle-highlight")
+        .forEach(it => it.classList.remove("vehicle-highlight"));
+}
+}
+document.getElementById("prevRot").onclick = () => {
+    currentMonday = addDays(currentMonday, -7);
+    renderRotatedPlanner();
+};
+
+document.getElementById("nextRot").onclick = () => {
+    currentMonday = addDays(currentMonday, 7);
+    renderRotatedPlanner();
+};
+
+document.getElementById("todayRot").onclick = () => {
+    currentMonday = startOfWeek(new Date());
+    renderRotatedPlanner();
+};
+
 function addRotatedCell(grid, emp, day) {
     const iso = isoDateStr(day);
-
 
     const wrap = document.createElement("div");
     wrap.className = "rot-cell";
 
-    // WEEKEND kleur
-    const isWeekend = (day.getDay() === 0 || day.getDay() === 6);
-    if (isWeekend) wrap.classList.add("weekend");
-
-
-    // Vandaag → markeer ALLE medewerker kolommen van deze dag
-    if (iso === TODAY_ISO) {
-        wrap.classList.add("today");
-    }
-
-
-    // AM / PM containers
+    // === AM/PM containers =====================================
     const am = document.createElement("div");
     am.className = "rot-am rot-part dropzone";
+
     am.dataset.part = "am";
     am.dataset.empId = emp.id;
     am.dataset.date = iso;
 
     const pm = document.createElement("div");
     pm.className = "rot-pm rot-part dropzone";
+
     pm.dataset.part = "pm";
     pm.dataset.empId = emp.id;
     pm.dataset.date = iso;
@@ -187,168 +176,121 @@ function addRotatedCell(grid, emp, day) {
     wrap.appendChild(am);
     wrap.appendChild(pm);
 
-// TAKEN ophalen
-const tasks = cache.assignments.filter(a =>
-    (a.employees?.includes(emp.id) || a.employee_id === emp.id) &&
-    iso >= a.start_date &&
-    iso <= a.end_date
-);
+    am.classList.add("dropzone");
+    pm.classList.add("dropzone");
+
+    // ===========================================================
+
+    // TAKEN ophalen
+    const tasks = cache.assignments.filter(a =>
+        (a.employees?.includes(emp.id) || a.employee_id === emp.id) &&
+        iso >= a.start_date &&
+        iso <= a.end_date
+    );
 
 tasks.forEach(a => {
     const it = document.getElementById("rotItemTpl")
         .content.cloneNode(true).firstElementChild;
 
-    // LOVD markering
-    let isLOVD = false;
-    const empObj = cache.employees.find(e => e.id === emp.id);
-    if (empObj?.name.toLowerCase().includes("lovd")) isLOVD = true;
+        it.classList.add("item"); // ← BELANGRIJK!
+// --- LOVD taak-markering ---
+let isLOVD = false;
 
-    if (a.employees?.length) {
-        for (const eid of a.employees) {
-            const em = cache.employees.find(e => e.id === eid);
-            if (em?.name.toLowerCase().includes("lovd")) {
-                isLOVD = true;
-                break;
-            }
+// 1) Huidige kolom-medewerker checken
+const empObj = cache.employees.find(e => e.id === emp.id);
+if (empObj && empObj.name && empObj.name.toLowerCase().includes("lovd")) {
+    isLOVD = true;
+}
+
+// 2) Check of een van de medewerkers in de taak LOVD is
+if (a.employees?.length > 0) {
+    for (const eid of a.employees) {
+        const em = cache.employees.find(e => e.id === eid);
+        if (em && em.name && em.name.toLowerCase().includes("lovd")) {
+            isLOVD = true;
+            break;
         }
     }
-    if (isLOVD) it.classList.add("lovd");
+}
+
+// 3) Class toepassen
+if (isLOVD) {
+    it.classList.add("lovd");
+}
+
 
     it.draggable = true;
     it.dataset.id = a.id;
     it.dataset.empId = emp.id;
+
+
+
+    // Klik op bestaande taak → modal openen
+    it.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openTaskModal(a, { readonly: false });
+    });
+
     it.dataset.vehicle = a.vehicle || "";
     it.classList.add(a.type);
 
     const proj = a.project_sections?.projects;
     const sec = a.project_sections;
 
-// PROJECTLABEL + SECTIE + PDF + PIN
-const top1 = it.querySelector(".top1");
-let label = proj ? `${proj.number} ${proj.name}` : "";
+    let label = "";
+    if (proj) label = `${proj.number} ${proj.name}`;
+    if (sec?.section_name) label += ` • ${sec.section_name}`;
 
-// ➕ Sectie
-if (sec?.section_name) {
-    label += ` • ${sec.section_name}`;
-}
-
-// ➕ PDF ICON
-if (sec?.attachment_url) {
-    label += ` <span class="pdf-icon" data-pdf="${sec.attachment_url}">📄</span>`;
-}
-
-// zet HTML
-top1.innerHTML = label;
-
-// SECTIE (meta)
-const meta = it.querySelector(".meta");
-meta.textContent = sec?.section_name || "";
-
-
-// 📍 GOOGLE MAPS PIN
-if (proj?.install_address) {
-    const maps = "https://www.google.com/maps?q=" + encodeURIComponent(proj.install_address);
-    it.dataset.map = maps;
-
-    const pin = document.createElement("span");
-    pin.className = "map-pin";
-    pin.dataset.map = maps;
-    pin.textContent = " 📍";
-    top1.appendChild(pin);
-}
-
-// 📄 PDF KLIKHANDLER
-top1.querySelectorAll(".pdf-icon").forEach(pdf => {
-    pdf.style.cursor = "pointer";
-    pdf.addEventListener("click", (e) => {
-        e.stopPropagation();
-        window.open(pdf.dataset.pdf, "_blank");
-    });
-});
-
-
-// CLICK HANDLER (PDF → pin → modal)
-it.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    // 📄 PDF
-    const pdf = e.target.closest(".pdf-icon");
-    if (pdf) {
-        window.open(pdf.dataset.pdf, "_blank");
-        return;
+    // PROJECT LABEL
+    // REGEL 1 — projectnummer + klantnaam
+    const top1 = it.querySelector(".top1");
+    if (proj) {
+        top1.textContent = `${proj.number} ${proj.name}`;
+    } else {
+        top1.textContent = "";
     }
 
-    // 📍 PIN
-    const pin = e.target.closest(".map-pin");
-    if (pin) {
-        window.open(pin.dataset.map, "_blank");
-        return;
+    // REGEL 2 — sectie
+    const meta = it.querySelector(".meta");
+    if (sec && sec.section_name) {
+        meta.textContent = sec.section_name;
+    } else {
+        meta.textContent = "";
     }
 
-    // MODAL
-    openTaskModal(a, { readonly: false });
-});
-
-
-    // NOTITIES
+    // NOTITIE ZICHTBAAR
     const noteEl = it.querySelector(".note");
     if (noteEl) {
-        if (a.notes?.trim()) {
-            noteEl.textContent = a.notes;
+        if (a.note && a.note.trim() !== "") {
+            noteEl.textContent = a.note;
             noteEl.style.display = "block";
         } else {
             noteEl.style.display = "none";
         }
     }
 
-    // URGENT
+    // URGENTIE 
     if (a.urgent) {
-        it.classList.add("urgent");
-        if (top1) top1.classList.add("urgent");
-    }
+    it.classList.add("urgent");
+    const top1 = it.querySelector(".top1");
+    if (top1) top1.classList.add("urgent");
+}
 
-    // AM / PM / FULL
+
+    // BLOCK PLAATSING
     const blk = a.block || blockFromTimes(a.start_time, a.end_time);
 
-    if (blk === "am") {
+    if (blk === "pm") pm.appendChild(it);
+    else if (blk === "am") am.appendChild(it);
+    else {
+        it.classList.add("full-block");
         am.appendChild(it);
-    } else if (blk === "pm") {
-        pm.appendChild(it);
-    } else {
-        // HELE DAG → dubbele taak (AM+PM)
-        const itAM = it.cloneNode(true);
-        const itPM = it.cloneNode(true);
-
-        // AM click fix bij clone
-        itAM.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (e.target.closest(".map-pin")) {
-                window.open(e.target.closest(".map-pin").dataset.map, "_blank");
-                return;
-            }
-            openTaskModal(a, { readonly: false });
-        });
-
-        // PM click fix bij clone
-        itPM.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (e.target.closest(".map-pin")) {
-                window.open(e.target.closest(".map-pin").dataset.map, "_blank");
-                return;
-            }
-            openTaskModal(a, { readonly: false });
-        });
-
-        am.appendChild(itAM);
-        pm.appendChild(itPM);
     }
 });
 
 
 
-
-
-    // Nieuwe taak toevoegen
+    // === CLICK om nieuwe taak toe te voegen ========================
     [am, pm].forEach(part => {
         part.addEventListener("click", function (e) {
             if (!isAdmin() || e.target !== part) return;
@@ -372,17 +314,17 @@ it.addEventListener("click", (e) => {
             }, { readonly: false });
         });
     });
+    // ================================================================
 
     grid.appendChild(wrap);
 }
 
-
-
-// -----------------------------
-// DRAG & DROP (ROTATED)
-// -----------------------------
+// ==========================================
+// DRAG & DROP HANDLERS (rotated)
+// ==========================================
 let draggedTask = null;
 
+// start
 document.addEventListener("dragstart", e => {
     const item = e.target.closest(".item");
     if (!item) return;
@@ -390,6 +332,7 @@ document.addEventListener("dragstart", e => {
     item.classList.add("dragging");
 });
 
+// dragover
 document.addEventListener("dragover", e => {
     const dz = e.target.closest(".dropzone");
     if (!dz) return;
@@ -397,11 +340,13 @@ document.addEventListener("dragover", e => {
     dz.classList.add("drop-hover");
 });
 
+// dragleave
 document.addEventListener("dragleave", e => {
     const dz = e.target.closest(".dropzone");
     if (dz) dz.classList.remove("drop-hover");
 });
 
+// drop
 document.addEventListener("drop", async e => {
     const dz = e.target.closest(".dropzone");
     if (!dz || !draggedTask) return;
@@ -410,29 +355,34 @@ document.addEventListener("drop", async e => {
     dz.classList.remove("drop-hover");
 
     const taskId = Number(draggedTask.dataset.id);
-    const empId = Number(dz.dataset.empId);
-    const date = dz.dataset.date;
-    const part = dz.dataset.part;
+    const empId  = Number(dz.dataset.empId);
+    const date   = dz.dataset.date;
+    const part   = dz.dataset.part;
 
     const oldEmpId = Number(draggedTask.dataset.empId);
 
-    // SHIFT = kopiëren
+    // 1️⃣ SHIFT = ALTIJD KOPIËREN
     if (e.shiftKey) {
         await copyTask(taskId, empId, date, part);
+
+        // dragging reset
         draggedTask.classList.remove("dragging");
         draggedTask = null;
+
         return;
     }
 
-    // Zelfde medewerker → direct verplaatsen
+    // 2️⃣ ZELFDE MEDEWERKER → direct verplaatsen
     if (oldEmpId === empId) {
         await moveTask(taskId, empId, date, part);
+
         draggedTask.classList.remove("dragging");
         draggedTask = null;
+
         return;
     }
 
-    // Andere medewerker → popup
+    // 3️⃣ ANDERE MEDEWERKER → popup
     const choice = await showDragChoice();
     if (!choice) {
         draggedTask.classList.remove("dragging");
@@ -442,25 +392,27 @@ document.addEventListener("drop", async e => {
 
     if (choice === "replace") {
         await moveTask(taskId, empId, date, part);
-    } else if (choice === "add") {
+    } 
+    else if (choice === "add") {
         await addEmployeeToTask(taskId, empId);
     }
 
+    // ALTIJD dragging stopzetten
     draggedTask.classList.remove("dragging");
     draggedTask = null;
 });
 
 
 
-// -----------------------------
-// COPY / MOVE / ADD EMPLOYEE
-// -----------------------------
 async function copyTask(taskId, empId, date, part) {
     const original = cache.assignments.find(a => a.id === taskId);
     if (!original) return;
 
     const t = timesForBlock(part);
 
+    // Belangrijk:
+    // assignments heeft GEEN project_id kolom
+    // dus we halen alleen de sectie op
     const sectionId =
         original.project_section_id ||
         original.project_sections?.id ||
@@ -483,8 +435,12 @@ async function copyTask(taskId, empId, date, part) {
         .select()
         .single();
 
-    if (error) return;
+    if (error) {
+        console.error("COPY ERROR:", error);
+        return;
+    }
 
+    // medewerkers kopiëren
     const employees =
         original.employees?.length
             ? original.employees
@@ -495,6 +451,7 @@ async function copyTask(taskId, empId, date, part) {
             .insert({ assignment_id: newAssign.id, employee_id: e });
     }
 
+    // medewerker van de drop-zone toevoegen indien nodig
     if (!employees.includes(empId)) {
         await sb.from("assignment_employees")
             .insert({ assignment_id: newAssign.id, employee_id: empId });
@@ -502,7 +459,6 @@ async function copyTask(taskId, empId, date, part) {
 
     await loadRotated();
 }
-
 
 
 async function moveTask(taskId, empId, date, part) {
@@ -517,6 +473,7 @@ async function moveTask(taskId, empId, date, part) {
         })
         .eq("id", taskId);
 
+    // update employee of assignment_employees
     await sb.from("assignment_employees")
         .delete()
         .eq("assignment_id", taskId);
@@ -527,9 +484,9 @@ async function moveTask(taskId, empId, date, part) {
     await loadRotated();
 }
 
-
-
 async function addEmployeeToTask(taskId, empId) {
+
+    // check of medewerker al bestaat in deze taak
     const { data: exists } = await sb
         .from("assignment_employees")
         .select("id")
@@ -537,21 +494,23 @@ async function addEmployeeToTask(taskId, empId) {
         .eq("employee_id", empId)
         .maybeSingle();
 
-    if (exists) return;
+    if (exists) {
+        console.log("Medewerker zit al in taak → insert overslaan");
+        return;
+    }
 
     await sb.from("assignment_employees")
-        .insert({ assignment_id: taskId, employee_id: empId })
-        .onConflict("assignment_id, employee_id")
-        .ignore();
+    .insert({ assignment_id: taskId, employee_id: empId })
+    .onConflict("assignment_id, employee_id")
+    .ignore();
 
     await loadRotated();
 }
 
 
-
-// -----------------------------
-// POPUP MENU BIJ DROP
-// -----------------------------
+// ===============================================
+//  KEUZEMENU BIJ DRAG & DROP (Rotated)
+// ===============================================
 async function showDragChoice() {
     return new Promise((resolve) => {
         const modal = document.createElement("div");
@@ -586,23 +545,3 @@ async function showDragChoice() {
 
 
 
-// -----------------------------
-// ROTATED ONLY – NAV BUTTONS
-// -----------------------------
-if (location.pathname.includes("rotated")) {
-
-    document.getElementById("prevRot").onclick = () => {
-        currentMonday = addDays(currentMonday, -7);
-        renderRotatedPlanner();
-    };
-
-    document.getElementById("nextRot").onclick = () => {
-        currentMonday = addDays(currentMonday, 7);
-        renderRotatedPlanner();
-    };
-
-    document.getElementById("todayRot").onclick = () => {
-        currentMonday = startOfWeek(new Date());
-        renderRotatedPlanner();
-    };
-}

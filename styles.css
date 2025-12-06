@@ -1241,3 +1241,13 @@ body.rotated-page .rot-head-row {
 .switch-view:hover {
   background: #f3f3f3;
 }
+.section-highlight {
+
+  box-shadow: 0 0 15px 5px rgba(81, 81, 82, 0.8) !important;
+  background-color: rgba(166,140,255,0.15) !important;
+  border-radius: 10px;
+  transition: all 0.12s ease-in-out;
+  position: relative;
+  z-index: 999;
+  transform: scaleY(1.05);
+}
