@@ -1,4 +1,11 @@
 
+function isMobile() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+let lastTappedTaskId = null;
+let lastTapTime = 0;
+
 
 
 function getFullAssignment(id) {
@@ -12,6 +19,11 @@ if (typeof cache === "undefined") {
 // -----------------------------
 // ROTATED VIEW LOADER
 // -----------------------------
+
+
+
+
+
 async function loadRotated() {
     await reload();
     renderRotatedPlanner();
@@ -290,8 +302,12 @@ tasks.forEach(a => {
 const proj = a.project_sections?.projects || null;
 const sec  = a.project_sections || null;
 
-it.draggable = true;
+// Draggable alleen voor admins
+it.draggable = !!window.__IS_ADMIN;
+
+// Altijd ID zetten
 it.dataset.id = a.id;
+
 it.dataset.empId = emp.id;
 it.dataset.vehicle = a.vehicle || "";
 
@@ -365,31 +381,38 @@ top1.querySelectorAll(".pdf-icon").forEach(pdf => {
 
 // CLICK HANDLER (PDF → pin → modal)
 // CLICK: altijd volledige assignment ophalen
+let lastTapTime = 0;
+
 it.addEventListener("click", (e) => {
     e.stopPropagation();
 
-    const full = getFullAssignment(a.id);
-    if (!full) return;
+    const now = Date.now();
 
-    // -------------------------------------------
-    // FIX: Projectgegevens compleet maken voor modal
-    // -------------------------------------------
-    const sec = full.project_sections;
-
-    if (sec) {
-        // Project lookup als join niet volledig is
-        if (!sec.projects) {
-            sec.projects = cache.projects.find(p => p.id === sec.project_id) || null;
-        }
+    // Desktop → altijd direct modal
+    if (!isMobile()) {
+        openTaskModal(getFullAssignment(a.id), { readonly: false });
+        return;
     }
 
-    // Project-section object terugplaatsen in full
-    full.project_sections = sec;
+    // MOBIEL
+    if (lastTappedTaskId === a.id && (now - lastTapTime) < 12000) {
+        // 2e tik → modal openen
+        openTaskModal(getFullAssignment(a.id), { readonly: false });
 
-    // -------------------------------------------
+        lastTappedTaskId = null;
+        lastTapTime = 0;
+        return;
+    }
 
-    openTaskModal(full, { readonly: false });
+    // Eerste tik → highlight
+    lastTappedTaskId = a.id;
+    lastTapTime = now;
+
+    // Forceer highlight-update op mobiel
+    document.querySelectorAll(".item").forEach(x => x.classList.remove("touch-highlight"));
+    it.classList.add("touch-highlight");
 });
+
 
 
 
@@ -489,25 +512,36 @@ pm.appendChild(itPM);
 let draggedTask = null;
 
 document.addEventListener("dragstart", e => {
+    if (!window.__IS_ADMIN) return;
+
     const item = e.target.closest(".item");
     if (!item) return;
+
     draggedTask = item;
     item.classList.add("dragging");
 });
 
 document.addEventListener("dragover", e => {
+    if (!window.__IS_ADMIN) return; // ← BELANGRIJK
+
     const dz = e.target.closest(".dropzone");
     if (!dz) return;
-    e.preventDefault();
+
+    e.preventDefault(); // nodig voor drop
     dz.classList.add("drop-hover");
 });
 
+
 document.addEventListener("dragleave", e => {
+    if (!window.__IS_ADMIN) return;
+
     const dz = e.target.closest(".dropzone");
     if (dz) dz.classList.remove("drop-hover");
 });
 
 document.addEventListener("drop", async e => {
+    if (!window.__IS_ADMIN) return;
+
     const dz = e.target.closest(".dropzone");
     if (!dz || !draggedTask) return;
 
@@ -518,10 +552,9 @@ document.addEventListener("drop", async e => {
     const empId = Number(dz.dataset.empId);
     const date = dz.dataset.date;
     const part = dz.dataset.part;
-
     const oldEmpId = Number(draggedTask.dataset.empId);
 
-    // SHIFT = kopiëren
+    // SHIFT = kopie
     if (e.shiftKey) {
         await copyTask(taskId, empId, date, part);
         draggedTask.classList.remove("dragging");
@@ -529,7 +562,7 @@ document.addEventListener("drop", async e => {
         return;
     }
 
-    // Zelfde medewerker → direct verplaatsen
+    // Zelfde medewerker → simpel verplaatsen
     if (oldEmpId === empId) {
         await moveTask(taskId, empId, date, part);
         draggedTask.classList.remove("dragging");
@@ -537,7 +570,7 @@ document.addEventListener("drop", async e => {
         return;
     }
 
-    // Andere medewerker → popup
+    // Popup keuze
     const choice = await showDragChoice();
     if (!choice) {
         draggedTask.classList.remove("dragging");
@@ -554,6 +587,7 @@ document.addEventListener("drop", async e => {
     draggedTask.classList.remove("dragging");
     draggedTask = null;
 });
+
 
 
 
