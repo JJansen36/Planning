@@ -1,63 +1,50 @@
 // =======================================
-// AUTH.JS — centrale Supabase client
+// SUPABASE CLIENT
 // =======================================
-
-// Supabase globaal maken zodat andere scripts hem kunnen gebruiken
 window.sb = supabase.createClient(
   "https://qejxwoxaurbwllihnvim.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFlanh3b3hhdXJid2xsaWhudmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDgzODYsImV4cCI6MjA3ODMyNDM4Nn0.D4RFJurcIsWQUC4vInW43hMPUa87Rf8r1P9T4AISbn0"
 );
 
-// Lokale variabelen verwijzen naar dezelfde client
-const sb = window.sb;
-const supa = window.sb;
+const supa = window.sb; // backward compat
 
-// Admin status
-let IS_ADMIN = false;
-window.__IS_ADMIN = false;
 
 
 // =======================================
-// AUTH — verplichte login
+// AUTH — verplichte login + rol laden
 // =======================================
 async function requireAuth() {
-  const { data, error } = await supa.auth.getSession();
+  const path = window.location.pathname.toLowerCase();
+
+  // LOGIN → nooit redirecten
+  if (path.includes("login.html") || path.endsWith("/login") || path.includes("login")) {
+    return null;
+  }
+
+  const { data } = await supa.auth.getSession();
   const session = data?.session;
 
+  // niet ingelogd → alleen redirect als we NIET op login zitten
   if (!session) {
     window.location.href = "login.html";
     return null;
   }
 
-  // Admin check
+  let role = "gebruiker";
+
   try {
-    const { data: adminRow, error: adminError } = await supa
-      .from("admin_settings")
-      .select("is_admin")
-      .eq("user_id", session.user.id)
-      .maybeSingle();
+    const meta = session.user.user_metadata;
+    if (meta?.role === "admin") role = "admin";
+    else if (meta?.role === "hoofd") role = "hoofd";
+  } catch (e) {}
 
-    IS_ADMIN = !adminError && adminRow?.is_admin === true;
-  } catch (e) {
-    IS_ADMIN = false;
-  }
-
-  window.__IS_ADMIN = IS_ADMIN;
-
-
-  // ➜ Redirect voor medewerkers
-  if (!IS_ADMIN) {
-    const current = window.location.pathname;
-
-    // voorkom redirect-loop
-    if (!current.includes("rotated2.html") && !current.includes("login.html")) {
-      window.location.href = "rotated2.html";
-      return null;
-    }
-  }
+  window.__ROLE = role;
+  window.__IS_ADMIN = role === "admin";
 
   return session;
 }
+
+
 
 
 // =======================================
@@ -72,3 +59,59 @@ function setupLogout(buttonId = "logoutBtn") {
     window.location.href = "login.html";
   });
 }
+
+
+
+// =======================================
+// PAGINA-TOEGANG op basis van rol
+// =======================================
+document.addEventListener("DOMContentLoaded", async () => {
+    const path = window.location.pathname.toLowerCase();
+
+    // LOGIN en REGISTER → GEEN AUTH
+    if (path.endsWith("login.html") || path.endsWith("/login") || path.includes("login")) {
+        return;
+    }
+
+    // EERST requireAuth uitvoeren
+    await requireAuth();
+
+// ADMIN & HOOFD mogen admin.html openen
+if (path.includes("admin.html") && !(window.__ROLE === "admin" || window.__ROLE === "hoofd")) {
+    window.location.href = "index.html";
+    return;
+}
+
+
+    // GEBRUIKER restricties
+    if (window.__ROLE === "gebruiker") {
+        if (
+            path.includes("admin.html") ||
+            path.includes("overview.html") ||
+            path.includes("planner_service.html")
+        ) {
+            window.location.href = "index.html";
+            return;
+        }
+    }
+});
+
+async function loadCurrentEmployeeName() {
+  const {
+    data: { user }
+  } = await sb.auth.getUser();
+
+  if (!user) return null;
+
+  const { data, error } = await sb
+    .from("employees")
+    .select("name")
+    .eq("auth_id", user.id)
+    .single();
+
+  if (error || !data) return null;
+
+  return data.name;
+}
+
+window.loadCurrentEmployeeName = loadCurrentEmployeeName;

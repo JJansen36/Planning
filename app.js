@@ -893,10 +893,19 @@ if (proj) {
   label = `${proj.number || ""} — ${proj.name || ""}`;
 }
 
-// sectie
+// Sectie óf LOVD-notitie
 if (sec?.section_name) {
-  label += ` • ${sec.section_name}`;
+    // normale sectie
+    label += ` • ${sec.section_name}`;
+} else if (emp.name === "LOVD") {
+    // LOVD-taak → vervang sectie door notitie
+    if (a.notes && a.notes.trim().length > 0) {
+        label += ` • ${a.notes.trim()}`;
+    } else {
+        label += " • LOVD taak"; // fallback indien geen notitie
+    }
 }
+
 // 📄 PDF icoon tonen als sectie een bijlage heeft
 if (sec?.attachment_url) {
   label += ` <span class="pdf-icon" data-pdf="${sec.attachment_url}">📄</span>`;
@@ -1275,23 +1284,7 @@ function renderEmployeeCheckboxes(selected = []) {
     `;
   });
 
-  // Max 4 limiet
-  const checks = box.querySelectorAll("input[type='checkbox']");
-  checks.forEach((ch) => {
-    ch.addEventListener("change", () => {
-      const count = [...checks].filter((c) => c.checked).length;
-      const msg = document.getElementById("empLimitMsg");
-      if (count > 4) {
-        ch.checked = false;
-        if (msg) {
-          msg.style.display = "block";
-          setTimeout(() => (msg.style.display = "none"), 2000);
-        } else {
-          alert("Maximaal 4 collega's per taak.");
-        }
-      }
-    });
-  });
+
 }
 
 
@@ -1357,8 +1350,8 @@ async function openTaskModal(rec = {}, opts = {}) {
   // MEDEWERKERS LIJST (multi-select)
   // ---------------------------------------------
   let selectedEmployees = [];
-  if (Array.isArray(rec.employees) && rec.employees.length) {
-    selectedEmployees = rec.employees.slice(0, 4);
+if (Array.isArray(rec.employees) && rec.employees.length) {
+    selectedEmployees = rec.employees.slice();
   } else if (rec.employee_id) {
     selectedEmployees = [rec.employee_id];
   } else if (firstEmpId) {
@@ -1678,10 +1671,7 @@ async function handleSaveClick() {
     alert("Kies minimaal één medewerker voor deze taak.");
     return;
   }
-  if (selectedEmployeeIds.length > 4) {
-    alert("Maximaal 4 collega's per taak.");
-    return;
-  }
+
 
   // eerste gekozen medewerker is de "hoofd"-medewerker (rij in kalender)
   const mainEmployeeId = selectedEmployeeIds[0];

@@ -121,7 +121,7 @@ function renderProjectList() {
 
                         <span class="mini-actions">
                           ${s.production_text ? `<button class="btn tiny mini-prod" data-id="${s.id}">📝</button>` : ""}
-                          ${s.attachment_url ? `<a class="btn tiny mini-pdf" href="${s.attachment_url}" target="_blank">📄</a>` : ""}
+                          ${s.attachment_url ? `<a class="btn tiny mini-pdf" href="${s.attachment_url}" target="_blank">📐</a>` : ""}
                         </span>
                       </li>`
                   )
@@ -177,7 +177,7 @@ function renderSectionList() {
         <span class="section-title">${s.section_name}</span>
         <div class="section-actions">
           <button class="btn tiny editProdTextBtn" data-id="${s.id}">📝</button>
-          <button class="btn tiny uploadPdfBtn" data-id="${s.id}">📄</button>
+          <button class="btn tiny uploadPdfBtn" data-id="${s.id}">📐</button>
           ${s.attachment_url ? `<a class="btn tiny" href="${s.attachment_url}" target="_blank">Open</a>` : ""}
           <button class="btn tiny danger deleteSec" data-id="${s.id}">✕</button>
         </div>

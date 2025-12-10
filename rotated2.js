@@ -303,7 +303,7 @@ const proj = a.project_sections?.projects || null;
 const sec  = a.project_sections || null;
 
 // Draggable alleen voor admins
-it.draggable = !!window.__IS_ADMIN;
+it.draggable = window.__ROLE === "admin";
 
 // Altijd ID zetten
 it.dataset.id = a.id;
@@ -342,8 +342,20 @@ const note = it.querySelector(".note");
 // REGEL 1 → PROJECTNUMMER + PROJECTNAAM
 top1.textContent = proj ? `${proj.number}, ${proj.name}` : "";
 
-// REGEL 2 → SECTIE
-meta.textContent = sec?.section_name || "";
+// REGEL 2 → SECTIE óf LOVD-NOTITIE
+if (isLOVD) {
+    // LOVD → toon notitie in plaats van sectie
+    if (a.notes && a.notes.trim().length > 0) {
+        meta.textContent = a.notes.trim();
+    } else {
+        meta.textContent = "LOVD taak";
+    }
+} else {
+    // normale taak → sectie tonen
+    meta.textContent = sec?.section_name || "";
+}
+
+
 
 // REGEL 3 → ICONEN (PDF + PRODUCTIETEKST)
 let icons = "";
@@ -413,24 +425,6 @@ it.addEventListener("click", (e) => {
     it.classList.add("touch-highlight");
 });
 
-
-
-
-// ----------------------------------------------------
-// NOTE-REGEL: ICONEN + eventueel korte notitie
-// ----------------------------------------------------
-let iconLine = "";
-
-// TEKENING
-if (sec?.attachment_url) iconLine += "📐 ";
-
-// PRODUCTIETEKST
-if (sec?.production_text) iconLine += "📋 ";
-
-
-
-note.textContent = iconLine.trim();
-note.style.display = iconLine ? "block" : "none";
 
 
     // URGENT
@@ -512,7 +506,8 @@ pm.appendChild(itPM);
 let draggedTask = null;
 
 document.addEventListener("dragstart", e => {
-    if (!window.__IS_ADMIN) return;
+    if (window.__ROLE !== "admin") return;
+
 
     const item = e.target.closest(".item");
     if (!item) return;
@@ -522,7 +517,8 @@ document.addEventListener("dragstart", e => {
 });
 
 document.addEventListener("dragover", e => {
-    if (!window.__IS_ADMIN) return; // ← BELANGRIJK
+    if (window.__ROLE !== "admin") return;
+ // ← BELANGRIJK
 
     const dz = e.target.closest(".dropzone");
     if (!dz) return;
@@ -533,14 +529,16 @@ document.addEventListener("dragover", e => {
 
 
 document.addEventListener("dragleave", e => {
-    if (!window.__IS_ADMIN) return;
+    if (window.__ROLE !== "admin") return;
+
 
     const dz = e.target.closest(".dropzone");
     if (dz) dz.classList.remove("drop-hover");
 });
 
 document.addEventListener("drop", async e => {
-    if (!window.__IS_ADMIN) return;
+    if (window.__ROLE !== "admin") return;
+
 
     const dz = e.target.closest(".dropzone");
     if (!dz || !draggedTask) return;

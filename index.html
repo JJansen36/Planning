@@ -27,15 +27,16 @@
   </div>
 
   <div class="actions">
-    <a class="btn ghost" href="visitors.html">Wagen reserveren</a>
-      <a class="btn ghost admin-only-link" href="overview.html">
-    Weekoverzicht 2 maanden</a>
-    <a class="btn" href="rotated2.html">Weekplanning</a>
+    <a class="btn" href="rotated2.html">Planning</a>
+    <a class="btn ghost" href="visitors.html">Vervoer</a>
+      <a class="btn ghost admin-only-link" href="overview.html">2 maanden</a>
+    <a class="btn" href="service.html">Service</a>
     <a class="btn" href="admin.html">Beheer</a>
     <label class="theme-switch">
         <input type="checkbox" id="themeToggle">
         <span class="slider"></span>
       </label>
+    <span id="welcomeName" class="welcome"></span>
     <button id="logoutBtn">Uitloggen</button>
   </div>
 </header>
@@ -215,5 +216,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth.js" defer></script>
     <script src="app.js" defer></script>
+    <script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const name = await window.loadCurrentEmployeeName();
+
+  if (name) {
+    document.getElementById("welcomeName").textContent = "Welkom " + name;
+  } else {
+    document.getElementById("welcomeName").textContent = "Welkom";
+  }
+});
+</script>
 </body>
 </html>

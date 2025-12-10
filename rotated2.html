@@ -15,25 +15,34 @@
 <body class="rotated-page">
   
 <header class="topbar">
-    <div class="brand">
-        <div class="logo">LOVD</div>
-        <div class="title">Rotated Planning</div>
-    </div>
+  <div class="brand">
+    <div class="logo">LOVD</div>
+    <div class="title">Weekplanner</div>
+  </div>
 
-    <div class="week-nav">
-        <button id="prevRot" class="btn">← Vorige</button>
-    </div>
-    <div class="rot-week-label">
-        <span id="rotWeekLabel">Week …</span>
-    </div>
-        <button id="nextRot" class="btn">Volgende →</button>
-        <button id="todayRot" class="btn ghost">Vandaag</button>
-    </div>
-    <div class="week-nav">
-       <button id="logoutBtn" class="btn ghost">Uitloggen</button>
+  <div class="week-nav">
+    <button id="prevRot" class="btn">← Vorige</button>
+    <div id="rotWeekLabel" class="week-label"></div>
+    <button id="nextRot" class="btn">Volgende →</button>
+    <button id="todayRot" class="btn ghost">Vandaag</button>
+  </div>
 
-    </div>
+  <div class="actions">
+    <a class="btn" href="index.html">Planning</a>
+    <a class="btn ghost" href="visitors.html">Vervoer</a>
+    <a class="btn ghost admin-only-link" href="overview.html">2 maanden</a>
+    <a class="btn" href="service.html">Service</a>
+    <a class="btn" href="admin.html">Beheer</a>
+
+    <label class="theme-switch">
+      <input type="checkbox" id="themeToggle">
+      <span class="slider"></span>
+    </label>
+    <span id="welcomeName" class="welcome"></span>
+    <button id="logoutBtn" class="btn ghost">Uitloggen</button>
+  </div>
 </header>
+
 
 <div id="rotScroll">
     <div id="rotHead" class="rot-head-row"></div>
@@ -172,6 +181,29 @@
   document.addEventListener("DOMContentLoaded", () => {
     setupLogout("logoutBtn");
   });
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const role = window.__ROLE;
+
+    // verberg admin-only links
+    if (role !== "admin") {
+        document.querySelectorAll(".admin-only-link").forEach(el => el.style.display = "none");
+        const adminBtn = document.querySelector('a[href="admin.html"]');
+        if (adminBtn) adminBtn.style.display = "none";
+    }
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  const name = await window.loadCurrentEmployeeName();
+
+  if (name) {
+    document.getElementById("welcomeName").textContent = "Welkom " + name;
+  } else {
+    document.getElementById("welcomeName").textContent = "Welkom";
+  }
+});
 </script>
 
 </body>

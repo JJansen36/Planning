@@ -80,13 +80,15 @@
   </div>
 
   <script>
-    // Als iemand al ingelogd is → direct door naar de planner
-    (async () => {
-      const session = await getSession();
-      if (session) {
-        window.location.href = "index.html";
-      }
-    })();
+// Als iemand al ingelogd is → direct door naar de planner
+(async () => {
+  const { data } = await supa.auth.getSession();
+  const session = data?.session;
+
+  if (session) {
+    window.location.href = "index.html";
+  }
+})();
 
     document.getElementById("loginBtn").addEventListener("click", async () => {
       const email = document.getElementById("email").value.trim();
@@ -110,6 +112,9 @@
       window.location.href = "index.html";
     });
   </script>
+<script>
+  requireAuth();
+</script>
 
 </body>
 </html>

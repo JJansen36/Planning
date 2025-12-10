@@ -159,35 +159,57 @@ textarea:focus {
 /* ----------------------------------
    TOPBAR
 ---------------------------------- */
+/* --- Topbar gedeeld door planner & rotated2 --- */
 .topbar {
   display: flex;
-  gap: 12px;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--bg2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   position: sticky;
   top: 0;
-  z-index: 10;
-  box-shadow: var(--shadow);
-  color: var(--text);
+  z-index: 50;
 }
 
-.logo {
-  font-weight: 800;
-  letter-spacing: .15em;
-  background: #fff;
-  color: #000;
-  padding: 4px 10px;
-  border-radius: 999px;
+.brand {
+  display: flex;
+  flex-direction: column;
 }
 
-/* Light mode logo invert */
-.theme-light .logo {
-  background: #000;
-  color: #fff;
+.brand .logo {
+  font-size: 1.4rem;
+  font-weight: 700;
 }
+
+.brand .title {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.week-label {
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 6px 12px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#logoutBtn {
+  border-radius: 12px;
+  padding: 8px 16px;
+}
+
 
 /* ----------------------------------
    BASIC LAYOUT

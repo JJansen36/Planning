@@ -1251,3 +1251,14 @@ body.rotated-page .rot-head-row {
   z-index: 999;
   transform: scaleY(1.05);
 }
+.week-nav {
+  display: flex;
+  align-items: center;      /* verticaal mooi uitlijnen */
+  gap: 12px;                /* ruimte tussen knoppen */
+  flex-wrap: wrap;          /* optioneel: zodat het op mobiel niet breekt */
+}
+
+.week-label {
+  font-size: 1.8rem;
+  font-weight: 300;
+}
