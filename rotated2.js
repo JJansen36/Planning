@@ -336,22 +336,33 @@ if (isLOVD) it.classList.add("lovd");
 // 3-REGEL TAKENBLOK OPBOUWEN
 // ----------------------------
 const top1 = it.querySelector(".top1");
-const meta = it.querySelector(".meta");
+let meta = it.querySelector(".top2");
+
+// Als de rotated template geen top2 heeft → toevoegen
+if (!meta) {
+    meta = document.createElement("div");
+    meta.className = "top2";
+    const noteEl = it.querySelector(".note");
+    if (noteEl) {
+        it.insertBefore(meta, noteEl);
+    } else {
+        it.appendChild(meta);
+    }
+}
+
 const note = it.querySelector(".note");
 
 // REGEL 1 → PROJECTNUMMER + PROJECTNAAM
 top1.textContent = proj ? `${proj.number}, ${proj.name}` : "";
 
-// REGEL 2 → SECTIE óf LOVD-NOTITIE
+// REGEL 2 → SECTIE of LOVD-NOTITIE
 if (isLOVD) {
-    // LOVD → toon notitie in plaats van sectie
     if (a.notes && a.notes.trim().length > 0) {
         meta.textContent = a.notes.trim();
     } else {
         meta.textContent = "LOVD taak";
     }
 } else {
-    // normale taak → sectie tonen
     meta.textContent = sec?.section_name || "";
 }
 
@@ -424,7 +435,6 @@ it.addEventListener("click", (e) => {
     document.querySelectorAll(".item").forEach(x => x.classList.remove("touch-highlight"));
     it.classList.add("touch-highlight");
 });
-
 
 
     // URGENT
