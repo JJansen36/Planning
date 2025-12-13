@@ -7,19 +7,24 @@
 
   <link rel="stylesheet" href="styles.css" />
 
+  <!-- JUISTE VOLGORDE: eerst Supabase → auth.js → daarna admin.js -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth.js"></script>
-  <script src="admin.js"></script>
+  <script src="admin.js" defer></script>
+
 </head>
+
 <body class="admin-page">
+
 <header class="topbar">
   <div class="brand">
     <div class="logo">LOVD</div>
     <div class="title">Beheer</div>
   </div>
+
   <div class="actions">
     <a href="index.html" class="btn ghost">← Terug naar planner</a>
-        <label class="theme-switch">
+    <label class="theme-switch">
       <input type="checkbox" id="themeToggle">
       <span class="slider"></span>
     </label>
@@ -36,80 +41,71 @@
     <!-- PROJECTEN -->
     <h3>Projecten</h3>
 
-<div class="proj-row">
-  <div class="proj-field small">
-    <label>Projectnummer</label>
-    <input id="projNumber" type="text" placeholder="Bijv. 2401">
-  </div>
+    <div class="proj-row">
+      <div class="proj-field small">
+        <label>Projectnummer</label>
+        <input id="projNumber" type="text" placeholder="Bijv. 2401">
+      </div>
 
-  <div class="proj-field medium">
-    <label>Klantnaam</label>
-    <input id="projCustomer" type="text" placeholder="Klantnaam">
-  </div>
+      <div class="proj-field medium">
+        <label>Klantnaam</label>
+        <input id="projCustomer" type="text" placeholder="Klantnaam">
+      </div>
 
-  <div class="proj-field large">
-    <label>Projectnaam</label>
-    <input id="projName" type="text" placeholder="Naam project">
-  </div>
+      <div class="proj-field large">
+        <label>Projectnaam</label>
+        <input id="projName" type="text" placeholder="Naam project">
+      </div>
 
-  <div class="proj-field xl">
-    <label>Montageadres</label>
-    <input id="mInstallAddress" type="text" placeholder="Straatnaam 10, Plaats">
-  </div>
-</div>
-<!-- SECTIES -->
-<div id="sectionBox" hidden>
-  <h4 id="sectionHeader"></h4>
-  <ul id="sectionList"></ul>
-
-  <div class="row">
-    <div class="section-input-row">
-      <input id="sectionName" placeholder="Naam sectie">
-      <button id="addSectionBtn" class="btn primary small">Toevoegen</button>
-      
+      <div class="proj-field xl">
+        <label>Montageadres</label>
+        <input id="mInstallAddress" type="text" placeholder="Straatnaam 10, Plaats">
+      </div>
     </div>
-  </div>
-</div>
-<button id="openProdText" class="btn small" style="margin-top:10px;">
-    📄 Productietekst
-</button>
 
+    <!-- SECTIES -->
+    <div id="sectionBox" hidden>
+      <h4 id="sectionHeader"></h4>
+      <ul id="sectionList"></ul>
 
-<button id="addProjBtn" class="btn primary">Project toevoegen</button>
-<div class="project-search-wrap">
-  <input 
-    id="projectSearch" 
-    type="text" 
-    placeholder="Zoek projectnummer, naam, klant of adres…" 
-    class="project-search-input"
-  />
-</div>
+      <div class="row">
+        <div class="section-input-row">
+          <input id="sectionName" placeholder="Naam sectie">
+          <button id="addSectionBtn" class="btn primary small">Toevoegen</button>
+        </div>
+      </div>
+    </div>
 
+    <button id="openProdText" class="btn small" style="margin-top:10px;">📄 Productietekst</button>
 
-<div id="projectList" class="project-table"></div>
+    <button id="addProjBtn" class="btn primary">Project toevoegen</button>
 
-    
+    <div class="project-search-wrap">
+      <input 
+        id="projectSearch" 
+        type="text" 
+        placeholder="Zoek projectnummer, naam, klant of adres…" 
+        class="project-search-input"
+      />
+    </div>
+
+    <div id="projectList" class="project-table"></div>
 
     <hr>
 
-
-
-<hr>
-
     <!-- MEDEWERKERS -->
     <h3>Medewerkers</h3>
-<div class="employee-add-row">
-  <input id="empName" placeholder="Naam nieuwe medewerker">
-  <button id="addEmpBtn" class="btn small primary">Toevoegen</button>
-</div>
-    <ul id="empList" class="list"></ul>
 
+    <div class="employee-add-row">
+      <input id="empName" placeholder="Naam nieuwe medewerker">
+      <button id="addEmpBtn" class="btn small primary">Toevoegen</button>
+    </div>
+
+    <ul id="empList" class="list"></ul>
   </section>
 </main>
 
-<!-- ===========================================
-     PRODUCTIETEKST 
-=========================================== -->
+<!-- PRODUCTIETEKST MODAL -->
 <div id="prodTextModal" class="modal-backdrop" hidden>
   <div class="modal" style="max-width:650px;">
     <header class="modal-header">
@@ -119,7 +115,7 @@
 
     <div class="modal-body">
       <textarea id="prodTextEditor"
-                style="width:100%; height:300px; padding:10px; font-size:14px;"></textarea>
+        style="width:100%; height:300px; padding:10px; font-size:14px;"></textarea>
     </div>
 
     <footer class="modal-footer">
@@ -129,34 +125,41 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
 
+  // 🌟 THEMA INSTELLEN
   const toggle = document.getElementById("themeToggle");
-  if (!toggle) return;
-
-  // juiste startmode zetten
-  const saved = localStorage.getItem("theme");
-  if (saved === "light") {
+  if (toggle) {
+    const saved = localStorage.getItem("theme");
+    if (saved === "light") {
       document.documentElement.classList.remove("theme-dark");
       toggle.checked = true;
-  } else {
-      document.documentElement.classList.add("theme-dark");
-      toggle.checked = false;
+    }
+    toggle.addEventListener("change", () => {
+      if (toggle.checked) {
+        document.documentElement.classList.remove("theme-dark");
+        localStorage.setItem("theme", "light");
+      } else {
+        document.documentElement.classList.add("theme-dark");
+        localStorage.setItem("theme", "dark");
+      }
+    });
   }
 
-  // omschakelen
-  toggle.addEventListener("change", () => {
-      if (toggle.checked) {
-          document.documentElement.classList.remove("theme-dark");
-          localStorage.setItem("theme", "light");
-      } else {
-          document.documentElement.classList.add("theme-dark");
-          localStorage.setItem("theme", "dark");
-      }
-  });
 
+
+  // Logout knop activeren
+  setupLogout();
 });
 </script>
+<input
+  type="file"
+  id="pdfInput"
+  accept="application/pdf"
+  multiple
+  style="display:none"
+/>
+
 
 </body>
 </html>

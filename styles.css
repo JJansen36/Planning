@@ -1262,3 +1262,44 @@ body.rotated-page .rot-head-row {
   font-size: 1.8rem;
   font-weight: 300;
 }
+.section-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-files {
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.section-file {
+  font-size: 12px;
+  color: #032f70;
+  text-decoration: none;
+}
+
+.section-file:hover {
+  text-decoration: underline;
+}
+
+.mini-icon {
+  margin-left: 4px;
+  cursor: default;
+}
+.drawing-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 6px 0 0 0;
+}
+
+.drawing-list li {
+  margin-bottom: 4px;
+}
+
+.drawing-list a {
+  font-size: 13px;
+  text-decoration: none;
+}

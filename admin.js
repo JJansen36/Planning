@@ -13,8 +13,14 @@ const $ = (s) => document.querySelector(s);
 // INIT
 // ======================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  const session = await requireAuth();
-  if (!session) return;
+  const { data: { user } } = await sb.auth.getUser();
+
+  if (!user) {
+    location.href = "index.html";
+    return;
+  }
+
+  console.log("Admin ingelogd:", user.email);
 
   setupLogout();
   initEvents();
@@ -49,30 +55,52 @@ function filterProjects(query) {
 async function loadProjects() {
   const { data, error } = await sb
     .from("projects")
-    .select("*, project_sections(*)")
+.select(`
+  id,
+  number,
+  name,
+  customer,
+  install_address,
+project_sections (
+  id,
+  section_name,
+  production_text,
+  has_drawing
+)
+
+`)
     .order("number", { ascending: true });
 
-  if (error) return console.error(error);
+  if (error) {
+    console.error("loadProjects error:", error);
+    return;
+  }
+
   PROJECTS = data || [];
   renderProjectList();
-
-  if (CURRENT_PROJECT_ID) loadSectionsForCurrent();
 }
+
 
 async function loadSectionsForCurrent() {
   if (!CURRENT_PROJECT_ID) return;
 
   const { data, error } = await sb
     .from("project_sections")
-    .select("*")
-    .eq("project_id", CURRENT_PROJECT_ID)
-    .order("section_name", { ascending: true });
+    .select("*, section_files(*)")
+    .eq("project_id", CURRENT_PROJECT_ID);
 
-  if (error) return console.error(error);
+  if (error) {
+    console.error(error);
+    return;
+  }
 
-  SECTIONS = data || [];
+  SECTIONS = (data || []).sort((a, b) =>
+    (a.section_name || "").localeCompare(b.section_name || "")
+  );
+
   renderSectionList();
 }
+
 
 async function loadEmployees() {
   const { data, error } = await sb
@@ -103,6 +131,12 @@ function renderProjectList() {
     const div = document.createElement("div");
     div.className = "project-row";
 
+const sortedSections = (p.project_sections || [])
+  .slice()
+  .sort((a, b) =>
+    (a.section_name || "").localeCompare(b.section_name || "")
+  );
+
     div.innerHTML = `
     <div class="project-row-main">
         <div class="project-row-title">
@@ -110,25 +144,22 @@ function renderProjectList() {
           <span class="proj-name">${p.name || ""}</span>
         </div>
 
-        ${
-          (p.project_sections || []).length
-            ? `<ul class="section-list">
-                ${p.project_sections
-                  .map(
-                    s => `
-                      <li class="section-mini">
-                        <span class="mini-title">• ${s.section_name}</span>
+${
+  sortedSections.length
+    ? `<ul class="section-list">
+        ${sortedSections.map(s => `
+          <li class="section-mini">
+            <span class="mini-title">• ${s.section_name}</span>
+<span class="mini-actions">
+  ${s.production_text ? `<span class="mini-icon" title="Productietekst">📝</span>` : ""}
+  ${s.has_drawing ? `<span class="mini-icon" title="Tekening">📐</span>` : ""}
+</span>
+          </li>
+        `).join("")}
+      </ul>`
+    : ""
+}
 
-                        <span class="mini-actions">
-                          ${s.production_text ? `<button class="btn tiny mini-prod" data-id="${s.id}">📝</button>` : ""}
-                          ${s.attachment_url ? `<a class="btn tiny mini-pdf" href="${s.attachment_url}" target="_blank">📐</a>` : ""}
-                        </span>
-                      </li>`
-                  )
-                  .join("")}
-              </ul>`
-            : ""
-        }
       </div>
 
       <div class="project-row-actions">
@@ -172,18 +203,35 @@ function renderSectionList() {
   }
 
   ul.innerHTML = SECTIONS.map(s => `
-    <li class="section-item">
-      <div class="section-line">
+  <li class="section-item">
+    <div class="section-line">
+      <div class="section-main">
         <span class="section-title">${s.section_name}</span>
-        <div class="section-actions">
-          <button class="btn tiny editProdTextBtn" data-id="${s.id}">📝</button>
-          <button class="btn tiny uploadPdfBtn" data-id="${s.id}">📐</button>
-          ${s.attachment_url ? `<a class="btn tiny" href="${s.attachment_url}" target="_blank">Open</a>` : ""}
-          <button class="btn tiny danger deleteSec" data-id="${s.id}">✕</button>
-        </div>
+
+        ${(s.section_files || []).length ? `
+          <div class="section-files">
+            ${(s.section_files || []).map(f => `
+              <a
+                class="section-file"
+                href="${sb.storage.from("attachments").getPublicUrl(f.file_path).data.publicUrl}"
+                target="_blank"
+              >
+                📐 ${f.file_name}
+              </a>
+            `).join("")}
+          </div>
+        ` : ""}
       </div>
-    </li>
-  `).join("");
+
+      <div class="section-actions">
+        <button class="btn tiny editProdTextBtn" data-id="${s.id}">📝</button>
+        <button class="btn tiny uploadPdfBtn" data-id="${s.id}">📐</button>
+        <button class="btn tiny danger deleteSec" data-id="${s.id}">✕</button>
+      </div>
+    </div>
+  </li>
+`).join("");
+
 
   // Selecteren van een sectie
   ul.querySelectorAll(".section-item").forEach(li => {
@@ -407,3 +455,50 @@ function initEvents() {
 
 
 }
+// ======================================================
+// PDF UPLOAD VOOR SECTIE
+// ======================================================
+let CURRENT_PDF_SECTION_ID = null;
+
+function uploadPdfForSection(sectionId) {
+  CURRENT_PDF_SECTION_ID = Number(sectionId);
+  document.getElementById("pdfInput").click();
+}
+
+document.getElementById("pdfInput")?.addEventListener("change", async (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length || !CURRENT_PDF_SECTION_ID) return;
+
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `sections/${CURRENT_PDF_SECTION_ID}/${Date.now()}_${safeName}`;
+
+    const { error: uploadError } = await sb.storage
+      .from("attachments")
+      .upload(path, file, {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Upload mislukt:", uploadError);
+      continue;
+    }
+
+    await sb.from("section_files").insert({
+      section_id: CURRENT_PDF_SECTION_ID,
+      file_name: file.name,
+      file_path: path,
+    });
+  }
+
+  await sb
+  .from("project_sections")
+  .update({ has_drawing: true })
+  .eq("id", CURRENT_PDF_SECTION_ID);
+
+
+  e.target.value = "";
+  loadSectionsForCurrent();
+});
+

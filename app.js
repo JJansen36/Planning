@@ -545,6 +545,13 @@ async function quickAddProjectViaModal() {
 //  DATA LADEN / MUTEREN
 // ==========================================================
 async function fetchAll() {
+
+  console.log(
+  "ROTATED SECTIONS:",
+  cache.assignments.map(a => a.project_sections)
+);
+
+  
     const empQ = sb
         .from("employees")
         .select("*")
@@ -567,19 +574,25 @@ async function fetchAll() {
             project_section_id,
             assignment_employees ( employee_id ),
 
-            project_sections:assignments_project_section_id_fkey (
-              id,
-              section_name,
-              production_text,
-              attachment_url,
-              project_id,
-              projects (
-                id,
-                number,
-                name,
-                install_address
-              )
-            )
+project_sections:assignments_project_section_id_fkey (
+  id,
+  section_name,
+  production_text,
+  project_id,
+  section_files (
+    id,
+    file_name,
+    file_path
+  ),
+  projects (
+    id,
+    number,
+    name,
+    install_address
+  )
+)
+
+
         `)
         .order("start_date", { ascending: true })
         .order("block", { ascending: true });
@@ -906,10 +919,8 @@ if (sec?.section_name) {
     }
 }
 
-// 📄 PDF icoon tonen als sectie een bijlage heeft
-if (sec?.attachment_url) {
-  label += ` <span class="pdf-icon" data-pdf="${sec.attachment_url}">📄</span>`;
-}
+const hasDrawings = sec?.section_files?.length > 0;
+
 
 // 📍 pin toevoegen
 if (proj?.install_address) {
@@ -922,7 +933,10 @@ if (proj?.install_address) {
 if (a.urgent) {
   label = "❗ " + label;
 }
-
+// 📐 ALS LAATSTE toevoegen
+if (hasDrawings) {
+  label += ` <span class="pdf-icon" title="${sec.section_files.length} tekening(en)">📐</span>`;
+}
 // HTML zetten
 top1.innerHTML = label;
 
@@ -935,14 +949,7 @@ top1.querySelectorAll(".map-pin").forEach(pin => {
   });
 });
 
-// pdf klikbaar
-top1.querySelectorAll(".pdf-icon").forEach(pdf => {
-  pdf.style.cursor = "pointer";
-  pdf.addEventListener("click", (e) => {
-    e.stopPropagation();
-    window.open(pdf.dataset.pdf, "_blank");
-  });
-});
+
 
 
 item.querySelector(".top2").textContent = "";
@@ -1428,20 +1435,34 @@ if (Array.isArray(rec.employees) && rec.employees.length) {
   // ---------------------------------------------
   // PDF KNOP
   // ---------------------------------------------
-  const pdfBtn = document.getElementById("openPDF");
-  const pdfUrl = sec?.attachment_url || null;
+const drawingsWrap = document.getElementById("modalDrawings");
+drawingsWrap.innerHTML = "";
 
-  if (pdfBtn) {
-    if (pdfUrl) {
-      pdfBtn.style.display = "";
-      pdfBtn.onclick = (ev) => {
-        ev.stopPropagation();
-        window.open(pdfUrl, "_blank");
-      };
-    } else {
-      pdfBtn.style.display = "none";
-    }
-  }
+const files = sec?.section_files || [];
+
+if (files.length) {
+  drawingsWrap.innerHTML = `
+    <h4>Tekeningen</h4>
+    <ul class="drawing-list">
+      ${files.map(f => {
+        const url = sb.storage
+          .from("attachments")
+          .getPublicUrl(f.file_path).data.publicUrl;
+
+        return `
+          <li>
+            <a href="${url}" target="_blank">
+              📐 ${f.file_name}
+            </a>
+          </li>
+        `;
+      }).join("")}
+    </ul>
+  `;
+}
+
+
+
 
   // ---------------------------------------------
   // MAP / ROUTE KNOP

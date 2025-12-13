@@ -1474,3 +1474,58 @@ header {
     z-index: 20;
     position: relative;
 }
+/* --- TEKENINGEN IN MODAL --- */
+/* --- MODAL TEKENINGEN --- */
+
+.modal-drawings {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.modal-drawings h4 {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.drawing-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.drawing-list li {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.drawing-list a {
+  display: block;           /* 🔑 dit maakt volle breedte */
+  width: 100%;
+  box-sizing: border-box;
+
+  color: var(--text-light);
+  text-decoration: none;
+  line-height: 1.35;
+  font-size: 13px;
+
+  word-break: break-word;   /* lange bestandsnamen */
+  white-space: normal;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 6px 0;
+}
+
+.radio-label input {
+  margin: 0;
+}
+.radio-list label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

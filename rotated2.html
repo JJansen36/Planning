@@ -96,11 +96,17 @@
       </div>
 
       <!-- PRODUCTIETEKST + PDF + MAP -->
-      <div class="input-row">
-        <button id="openProdText" class="btn small">🗎 Productietekst</button>
-        <button id="openPDF" class="btn small" style="display:none;">📐 Sectie PDF</button>
-        <button id="openMap" class="btn small" style="display:none;">📍 Route</button>
-      </div>
+<!-- TOOLS BOVENAAN -->
+<div class="modal-tools">
+  <button id="openProdText" class="btn small">
+    📝 Productietekst
+  </button>
+  <button id="openMap" class="btn small" style="display:none;">📍 Route</button>
+</div>
+
+<!-- TEKENINGEN OVER VOLLE BREEDTE -->
+<div id="modalDrawings" class="modal-drawings"></div>
+
 
       <!-- MEDEWERKERS -->
       <div class="form-row">
@@ -137,15 +143,18 @@
     <label><input type="radio" name="mBlock" value="pm"> Middag</label>
   </div>
 </div>
-      <!-- URGENT -->
-<div class="form-row urgent-row">
-  <label class="lbl">Urgent</label>
-  
-  <div class="urgent-wrap">
-    <input type="checkbox" id="mUrgent">
-    <span class="urgent-icon">❗</span>
+<!-- URGENT -->
+<div class="form-row">
+  <label></label> <!-- lege labelkolom voor uitlijning -->
+  <div class="radio-list">
+    <label>
+      <input type="checkbox" id="mUrgent">
+      Urgent
+    </label>
   </div>
 </div>
+
+
 
 <!-- VOERTUIG -->
 <div id="vehicleRow" class="form-row">
@@ -169,8 +178,9 @@
 
     <!-- FOOTER -->
     <footer class="modal-footer">
-      <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
       <button id="mSave" type="button" class="primary-btn">Opslaan</button>
+      <button id="mDelete" type="button" class="danger-btn">Verwijderen</button>
+
     </footer>
   </div>
 </div>
@@ -205,6 +215,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 </script>
+
+
+
 
 </body>
 </html>

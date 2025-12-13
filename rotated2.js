@@ -6,6 +6,9 @@ function isMobile() {
 let lastTappedTaskId = null;
 let lastTapTime = 0;
 
+// Startdatum voor rotated planner (vanaf vandaag)
+let currentStartDate = new Date(TODAY_ISO);
+
 
 
 function getFullAssignment(id) {
@@ -39,6 +42,18 @@ async function loadRotated() {
     }, 50);
 }
 
+function scrollToToday(smooth = true) {
+  const el = document.getElementById("todayCell");
+  if (!el) return;
+
+  const offset = 110; // topbar + header
+  const y = el.getBoundingClientRect().top + window.scrollY - offset;
+
+  window.scrollTo({
+    top: y,
+    behavior: smooth ? "smooth" : "auto"
+  });
+}
 
 // -----------------------------
 // Wacht tot app.js klaar is
@@ -79,6 +94,18 @@ function clearVehicleHighlights() {
         .forEach(it => it.classList.remove("vehicle-highlight"));
 }
 
+function moveTodayToTop(days) {
+    const index = days.findIndex(d => isoDateStr(d) === TODAY_ISO);
+
+    if (index > 0) {
+        const [today] = days.splice(index, 1);
+        days.unshift(today);
+    }
+
+    return days;
+}
+
+
 
 
 // -----------------------------
@@ -86,21 +113,23 @@ function clearVehicleHighlights() {
 // -----------------------------
 function renderRotatedPlanner() {
 
-        console.log("🔥 RENDER START — cache.reservations =", cache.reservations);
+
     const grid = document.getElementById("rotGrid");
 
     if (!grid) return;
 
     grid.innerHTML = "";
 
-    const START = currentMonday;
-    const DAYS = 28; // 4 weken
-    const days = Array.from({ length: DAYS }, (_, i) => addDays(START, i));
+const START = new Date(currentStartDate);
+const DAYS = 28;
+const days = Array.from({ length: DAYS }, (_, i) => addDays(START, i));
+;
 
-    const firstWeek = getWeekNumber(START);
-    const lastWeek = getWeekNumber(addDays(START, 21));
-    document.getElementById("rotWeekLabel").textContent =
-        `Week ${firstWeek} t/m ${lastWeek}`;
+const firstWeek = getWeekNumber(days[0]);
+const lastWeek = getWeekNumber(days[days.length - 1]);
+
+document.getElementById("rotWeekLabel").textContent =
+    `Week ${firstWeek} → ${lastWeek}`;
 
     const emps = cache.employees.filter(e => e.show_in_calendar !== false);
 
@@ -152,22 +181,19 @@ dl.appendChild(vehWrap);
         dl.style.gridColumn = "1";
         grid.appendChild(dl);
 
-console.log("RAW RESERVATIONS:", cache.reservations);
 
 // --------------------------------------
 // VEHICLES PER DAG (project + privé)
 // --------------------------------------
 const vehToday = [
-    // 1️⃣ Reserveringen (bus, bakwagen, privé)
     ...(cache.reservations || [])
-        .filter(r => String(r.date).slice(0, 10) === iso)
+        .filter(r => isoDateStr(new Date(r.date)) === iso)
         .map(r => ({
             vehicle: r.vehicle,
             private: ["privé", "prive", "private"].includes((r.kind || "").toLowerCase()),
-            employee: (cache.employees.find(e => e.id === r.employee_id)?.name) || null
+            employee: cache.employees.find(e => e.id === r.employee_id)?.name || null
         })),
 
-    // 2️⃣ Taken die een voertuig gebruiken
     ...cache.assignments
         .filter(a =>
             a.type === "montage" &&
@@ -183,7 +209,7 @@ const vehToday = [
         }))
 ];
 
-    console.log("VEH TODAY FOR", iso, vehToday);
+
 // --------------------------------------
 // RENDER VEHICLE LABELS IN DAG-CEL
 // --------------------------------------
@@ -231,6 +257,30 @@ row.addEventListener("mouseleave", () => {
             addRotatedCell(grid, emp, day);
         });
     }
+}
+
+function scrollToTodayIfIdle() {
+  if (Date.now() - lastUserActivity < 15000) return;
+
+  const todayRow = document.getElementById("todayRow");
+  if (!todayRow) {
+    console.warn("⚠️ todayRow niet gevonden");
+    return;
+  }
+
+  const offset = 110; // topbar + header
+  const y = todayRow.getBoundingClientRect().top + window.scrollY - offset;
+
+  isAutoScrolling = true;
+
+  window.scrollTo({
+    top: y,
+    behavior: "smooth"
+  });
+
+  setTimeout(() => {
+    isAutoScrolling = false;
+  }, 600);
 }
 
 
@@ -294,7 +344,7 @@ const tasks = cache.assignments.filter(a =>
 );
 
 tasks.forEach(a => {
-    console.log("RAW assignment in rotated:", a);
+
     const it = document.getElementById("rotItemTpl")
         .content.cloneNode(true).firstElementChild;
 
@@ -369,15 +419,16 @@ if (isLOVD) {
 
 
 // REGEL 3 → ICONEN (PDF + PRODUCTIETEKST)
-let icons = "";
+const hasDrawings = sec?.section_files?.length > 0;
 
-if (sec?.attachment_url) icons += "📐 ";
+let icons = "";
+if (hasDrawings) icons += "📐 ";
 if (sec?.production_text) icons += "📋 ";
 
 note.textContent = icons.trim();
 note.style.display = icons ? "block" : "none";
 
-console.log("ICONS SET:", icons, "IN NOTE:", note);
+
 
 
 // 📍 GOOGLE MAPS PIN
@@ -738,20 +789,22 @@ async function showDragChoice() {
 // -----------------------------
 if (location.pathname.includes("rotated")) {
 
-    document.getElementById("prevRot").onclick = () => {
-        currentMonday = addDays(currentMonday, -7);
-        renderRotatedPlanner();
-    };
+document.getElementById("prevRot").onclick = () => {
+    currentStartDate = addDays(currentStartDate, -7);
+    renderRotatedPlanner();
+};
 
-    document.getElementById("nextRot").onclick = () => {
-        currentMonday = addDays(currentMonday, 7);
-        renderRotatedPlanner();
-    };
+document.getElementById("nextRot").onclick = () => {
+    currentStartDate = addDays(currentStartDate, 7);
+    renderRotatedPlanner();
+};
 
-    document.getElementById("todayRot").onclick = () => {
-        currentMonday = startOfWeek(new Date());
-        renderRotatedPlanner();
-    };
+
+document.getElementById("todayRot").onclick = () => {
+    currentStartDate = new Date(TODAY_ISO);
+    renderRotatedPlanner();
+};
+
 }
 
 // ---------------------------------------------
@@ -800,3 +853,61 @@ function setupTaskModalButtons(section, project) {
         };
     }
 }
+
+
+function getPlannerScrollContainer() {
+  // PAS AAN ALS NODIG:
+  // meestal is dit de parent van rotGrid
+  return document.getElementById("rotGrid")?.parentElement;
+}
+
+// =============================
+// AUTO-SCROLL NAAR VANDAAG (idle-only, container-based)
+// =============================
+
+let lastUserActivity = Date.now();
+let isAutoScrolling = false;
+
+const SCROLL_IDLE_TIME = 15000; // 15 sec
+const CHECK_INTERVAL = 5000;   // elke 5 sec checken
+
+const scrollContainer = getPlannerScrollContainer();
+
+// User activity detecteren (BINNEN CONTAINER)
+["scroll", "mousedown", "wheel", "touchstart"].forEach(evt => {
+  scrollContainer.addEventListener(evt, () => {
+    if (!isAutoScrolling) lastUserActivity = Date.now();
+  }, { passive: true });
+});
+
+function autoScrollToTodayIfIdle() {
+  if (!scrollContainer) return;
+  if (Date.now() - lastUserActivity < SCROLL_IDLE_TIME) return;
+
+  const todayRow = document.getElementById("todayRow");
+  if (!todayRow) return;
+
+  const offset = 110;
+
+  const containerRect = scrollContainer.getBoundingClientRect();
+  const rowRect = todayRow.getBoundingClientRect();
+
+  const targetTop =
+    (rowRect.top - containerRect.top)
+    + scrollContainer.scrollTop
+    - offset;
+
+  isAutoScrolling = true;
+
+  scrollContainer.scrollTo({
+    top: targetTop,
+    behavior: "smooth"
+  });
+
+  setTimeout(() => {
+    isAutoScrolling = false;
+  }, 800);
+}
+
+setInterval(autoScrollToTodayIfIdle, CHECK_INTERVAL);
+
