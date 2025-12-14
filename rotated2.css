@@ -1055,12 +1055,7 @@ body.rotated-page .rot-head-row {
     margin-bottom: 16px;
 }
 
-/* MOBIEL */
-@media (max-width: 900px) {
-    .visitor-layout {
-        grid-template-columns: 1fr;
-    }
-}
+
 /* Admin pagina centreren en smaller maken */
 .admin-page main,
 .admin-page .layout.small {
@@ -1528,4 +1523,88 @@ header {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* ================================
+   MOBILE — FORCE FULLSCREEN MODAL
+================================ */
+@media (max-width: 768px) {
+
+  /* Backdrop mag niet meer centreren */
+  .modal-backdrop {
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  /* Modal zelf fullscreen */
+  .modal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+
+    width: 100vw !important;
+    height: 100dvh !important;
+
+    max-width: none !important;
+    max-height: none !important;
+
+    margin: 0 !important;
+    border-radius: 0 !important;
+
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header blijft staan */
+  .modal-header {
+    flex-shrink: 0;
+  }
+
+  /* Inhoud scrollt */
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+    /* Grid: dagkolom smaller */
+  body.rotated-page #rotGrid,
+  body.rotated-page .rot-head-row {
+    grid-template-columns: 80px repeat(var(--emp-count), minmax(0, 1fr)) !important;
+  }
+
+  /* Daglabel compacter */
+  body.rotated-page .rot-daylabel {
+    padding: 6px 6px !important;
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  /* Week-tekst iets kleiner */
+  body.rotated-page .rot-weekrow {
+    font-size: 13px;
+    padding-left: 6px;
+  }
+
+    /* Scroll container */
+  #rotScroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Grid breder maken dan scherm */
+  body.rotated-page #rotGrid,
+  body.rotated-page .rot-head-row {
+    width: max-content !important;
+    min-width: 100%;
+  }
+
+    body.rotated-page #rotGrid,
+  body.rotated-page .rot-head-row {
+    grid-template-columns:
+      100px              /* dagkolom */
+      repeat(var(--emp-count), 140px) !important;
+  }
+
+  
 }
