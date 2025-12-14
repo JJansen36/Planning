@@ -41,6 +41,10 @@ async function requireAuth() {
   window.__ROLE = role;
   window.__IS_ADMIN = role === "admin";
 
+  window.__USER_ID = session.user.id;
+  window.__USER_EMAIL = session.user.email;
+
+
   return session;
 }
 
@@ -115,3 +119,21 @@ async function loadCurrentEmployeeName() {
 }
 
 window.loadCurrentEmployeeName = loadCurrentEmployeeName;
+
+// =======================================
+// INGELOGDE MEDEWERKER (volledig record)
+// =======================================
+async function loadCurrentEmployee() {
+  if (!window.__USER_ID) return null;
+
+  const { data, error } = await sb
+    .from("employees")
+    .select("*")
+    .eq("auth_id", window.__USER_ID)
+    .single();
+
+  if (error || !data) return null;
+  return data;
+}
+
+window.loadCurrentEmployee = loadCurrentEmployee;

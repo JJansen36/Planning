@@ -36,6 +36,8 @@ function isAdmin() {
   return window.__IS_ADMIN === true;
 }
 
+
+
 // ==========================================================
 //  KLEINE HELPERS
 // ==========================================================
@@ -1167,6 +1169,32 @@ function renderVehicleBar(bar, monday) {
     bar.appendChild(cell);
   }
 }
+
+function getOrderedEmployees(employees) {
+  const loggedEmp = window.__CURRENT_EMPLOYEE;
+
+  // alleen medewerkers die zichtbaar zijn
+  let visible = employees.filter(e => e.show_in_calendar !== false);
+
+  const lovd = visible.find(e => e.name === "LOVD");
+  visible = visible.filter(e => e.name !== "LOVD");
+
+  if (loggedEmp) {
+    visible = visible.filter(e => e.id !== loggedEmp.id);
+  }
+
+  // overige alfabetisch
+  visible.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  if (loggedEmp) {
+    return lovd
+      ? [lovd, loggedEmp, ...visible]
+      : [loggedEmp, ...visible];
+  }
+
+  return lovd ? [lovd, ...visible] : visible;
+}
+
 
 function renderWeek(grid, monday, bar) {
   grid.innerHTML = "";

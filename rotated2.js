@@ -28,19 +28,17 @@ if (typeof cache === "undefined") {
 
 
 async function loadRotated() {
-    await reload();
-    renderRotatedPlanner();
+  await reload();
 
-    // Auto-scroll naar de huidige dag
-    setTimeout(() => {
-        const el = document.getElementById("todayCell");
-        if (el) {
-            const offset = 110; // topbar + medewerker header
-            const y = el.getBoundingClientRect().top + window.scrollY - offset;
-            window.scrollTo({ top: y, behavior: "smooth" });
-        }
-    }, 50);
+  // 🔑 NU cache.employees beschikbaar → bepaal ingelogde medewerker
+  if (typeof loadCurrentEmployee === "function") {
+    window.__CURRENT_EMPLOYEE = await loadCurrentEmployee();
+  }
+
+  renderRotatedPlanner();
 }
+
+
 
 function scrollToToday(smooth = true) {
   const el = document.getElementById("todayCell");
@@ -105,6 +103,49 @@ function moveTodayToTop(days) {
     return days;
 }
 
+console.log("CURRENT EMP:", window.__CURRENT_EMPLOYEE);
+console.log("EMPLOYEES:", cache.employees.map(e => ({
+  id: e.id,
+  name: e.name,
+  auth_id: e.auth_id,
+  show: e.show_in_calendar
+})));
+
+
+function getOrderedRotatedEmployees() {
+  const loggedEmp = window.__CURRENT_EMPLOYEE;
+
+  // zichtbare medewerkers
+  let visible = cache.employees.filter(
+    e => e.show_in_calendar !== false
+  );
+
+  // 🔒 BELANGRIJK:
+  // als ingelogde medewerker NIET voorkomt in de kalender → niets aanpassen
+  const loggedIsVisible =
+    loggedEmp &&
+    visible.some(e => String(e.id) === String(loggedEmp.id));
+
+  if (!loggedIsVisible) {
+    return visible;
+  }
+
+  // LOVD apart houden
+  const lovd = visible.find(e => e.name === "LOVD");
+  visible = visible.filter(e => e.name !== "LOVD");
+
+  // ingelogde medewerker eruit halen
+  visible = visible.filter(e => e.id !== loggedEmp.id);
+
+  // overige alfabetisch
+  visible.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  // opbouw: LOVD → ingelogde → rest
+  return lovd
+    ? [lovd, loggedEmp, ...visible]
+    : [loggedEmp, ...visible];
+}
+
 
 
 
@@ -131,7 +172,8 @@ const lastWeek = getWeekNumber(days[days.length - 1]);
 document.getElementById("rotWeekLabel").textContent =
     `Week ${firstWeek} → ${lastWeek}`;
 
-    const emps = cache.employees.filter(e => e.show_in_calendar !== false);
+    const emps = getOrderedRotatedEmployees();
+
 
     document.documentElement.style.setProperty("--emp-count", emps.length);
 
