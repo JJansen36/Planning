@@ -8,6 +8,12 @@ window.sb = supabase.createClient(
 
 const supa = window.sb; // backward compat
 
+// =======================================
+// MOBIEL DETECTIE
+// =======================================
+function isMobile() {
+  return window.innerWidth <= 768;
+}
 
 
 // =======================================
@@ -70,35 +76,43 @@ function setupLogout(buttonId = "logoutBtn") {
 // PAGINA-TOEGANG op basis van rol
 // =======================================
 document.addEventListener("DOMContentLoaded", async () => {
-    const path = window.location.pathname.toLowerCase();
+  const path = window.location.pathname.toLowerCase();
 
-    // LOGIN en REGISTER → GEEN AUTH
-    if (path.endsWith("login.html") || path.endsWith("/login") || path.includes("login")) {
-        return;
+  // LOGIN → geen auth
+  if (path.endsWith("login.html") || path.endsWith("/login") || path.includes("login")) {
+    return;
+  }
+
+  // Auth check
+  await requireAuth();
+
+  // 📱 MOBIEL → altijd rotated2.html
+  if (isMobile()) {
+    if (!path.includes("rotated2.html")) {
+      window.location.href = "rotated2.html";
+      return;
     }
+  }
 
-    // EERST requireAuth uitvoeren
-    await requireAuth();
-
-// ADMIN & HOOFD mogen admin.html openen
-if (path.includes("admin.html") && !(window.__ROLE === "admin" || window.__ROLE === "hoofd")) {
+  // ADMIN & HOOFD mogen admin.html openen
+  if (path.includes("admin.html") && !(window.__ROLE === "admin" || window.__ROLE === "hoofd")) {
     window.location.href = "index.html";
     return;
-}
+  }
 
-
-    // GEBRUIKER restricties
-    if (window.__ROLE === "gebruiker") {
-        if (
-            path.includes("admin.html") ||
-            path.includes("overview.html") ||
-            path.includes("planner_service.html")
-        ) {
-            window.location.href = "index.html";
-            return;
-        }
+  // GEBRUIKER restricties
+  if (window.__ROLE === "gebruiker") {
+    if (
+      path.includes("admin.html") ||
+      path.includes("overview.html") ||
+      path.includes("planner_service.html")
+    ) {
+      window.location.href = "index.html";
+      return;
     }
+  }
 });
+
 
 async function loadCurrentEmployeeName() {
   const {
